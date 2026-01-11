@@ -61,7 +61,7 @@ if uploaded_file is not None:
     st.subheader("📊 Prediction Results")
 
     # Show only key columns (this is where you add your dataframe line)
-    st.dataframe(output[["Predicted Outcome", "Risk Score"]], use_container_width=True)
+    st.dataframe(output[["Predicted Outcome", "Risk Score", "Recommended Actions"]], use_container_width=True)
 
     # Optional: show full output also
     with st.expander("See full output table"):
