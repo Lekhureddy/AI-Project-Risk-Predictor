@@ -14,12 +14,15 @@ if uploaded_file:
     with open("model.pkl", "rb") as f:
         model = pickle.load(f)
 
-    X = df.select_dtypes(include="number")
-    preds = model.predict(X)
-    risk_scores = model.predict_proba(X).max(axis=1) * 100
+    required_features = list(model.feature_names_in_)
 
-    df["Predicted Outcome"] = preds
-    df["Risk Score"] = risk_scores.round(2)
+missing = [c for c in required_features if c not in df.columns]
+extra = [c for c in df.columns if c not in required_features]
 
-    st.subheader("📊 Prediction Results")
-    st.dataframe(df)
+if missing:
+    st.error(f"Missing required columns: {missing}")
+    st.stop()
+
+X = df[required_features]
+preds = model.predict(X)
+
