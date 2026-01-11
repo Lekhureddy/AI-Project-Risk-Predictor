@@ -2,27 +2,44 @@ import streamlit as st
 import pandas as pd
 import pickle
 
-st.set_page_config(page_title="AI Project Risk Predictor", layout="wide")
-
-st.title("🚀 AI-Powered Project Performance Predictor")
-
-uploaded_file = st.file_uploader("Upload Project CSV", type=["csv"])
-
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    with open("model.pkl", "rb") as f:
-        model = pickle.load(f)
+# Load model
+with open("model.pkl", "rb") as f:
+    model = pickle.load(f)
 
-    required_features = list(model.feature_names_in_)
+# These are the exact columns the model expects
+required_features = list(model.feature_names_in_)
 
-missing = [c for c in required_features if c not in df.columns]
-extra = [c for c in df.columns if c not in required_features]
+# 1) One-hot encode uploaded data (same as training)
+df_encoded = pd.get_dummies(df)
 
-if missing:
-    st.error(f"Missing required columns: {missing}")
-    st.stop()
+# 2) Add any missing columns (set them to 0)
+for col in required_features:
+    if col not in df_encoded.columns:
+        df_encoded[col] = 0
 
-X = df[required_features]
+# 3) Keep ONLY the required columns in the same order
+X = df_encoded[required_features]
+
+# 4) Predict
 preds = model.predict(X)
+
+# If your model supports probabilities for risk score
+if hasattr(model, "predict_proba"):
+    proba = model.predict_proba(X)
+    risk_score = (proba.max(axis=1) * 100).round(2)
+else:
+    risk_score = None
+
+# Output
+df_out = df.copy()
+df_out["Predicted Outcome"] = preds
+if risk_score is not None:
+    df_out["Risk Score"] = risk_score
+
+st.subheader("📊 Prediction Results")
+st.dataframe(df_out)
+
 
