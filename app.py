@@ -54,7 +54,7 @@ if uploaded_file is not None:
     output = df.copy()
     output["Predicted Outcome"] = preds
     if risk_score is not None:
-        output["Risk Score"] = risk_score
+        output["Recommended Actions"] = output.apply(recommend_action, axis=1)
     else:
         output["Risk Score"] = "N/A"
 
