@@ -1,1 +1,1 @@
-# ai-project-risk-predictor
+# AI-project-risk-predictor
