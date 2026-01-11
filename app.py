@@ -62,6 +62,15 @@ if uploaded_file is not None:
 
     # Show only key columns (this is where you add your dataframe line)
     st.dataframe(output[["Predicted Outcome", "Risk Score", "Recommended Actions"]], use_container_width=True)
+    csv = output.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    label="⬇️ Download results as CSV",
+    data=csv,
+    file_name="project_risk_predictions.csv",
+    mime="text/csv"
+)
+
 
     # Optional: show full output also
     with st.expander("See full output table"):
