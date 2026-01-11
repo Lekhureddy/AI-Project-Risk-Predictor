@@ -2,6 +2,19 @@ import streamlit as st
 import pandas as pd
 import pickle
 
+def recommend_action(row):
+    score = row.get("Risk Score", 0)
+
+    if score == "N/A":
+        return "No risk score available"
+
+    if score >= 80:
+        return "High risk: add buffer, reduce scope, assign senior resources"
+    elif score >= 60:
+        return "Medium risk: monitor closely, improve planning"
+    else:
+        return "Low risk: no immediate action required"
+
 st.set_page_config(page_title="AI Project Risk Predictor", layout="wide")
 st.title("🚀 AI-Powered Project Performance Predictor")
 
