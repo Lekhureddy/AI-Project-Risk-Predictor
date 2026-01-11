@@ -2,18 +2,17 @@ import streamlit as st
 import pandas as pd
 import pickle
 
-def recommend_action(row):
-    score = row.get("Risk Score", 0)
 
+def recommend_action(score):
     if score == "N/A":
         return "No risk score available"
-
     if score >= 80:
         return "High risk: add buffer, reduce scope, assign senior resources"
     elif score >= 60:
         return "Medium risk: monitor closely, improve planning"
     else:
         return "Low risk: no immediate action required"
+
 
 st.set_page_config(page_title="AI Project Risk Predictor", layout="wide")
 st.title("🚀 AI-Powered Project Performance Predictor")
@@ -33,46 +32,48 @@ if uploaded_file is not None:
     # One-hot encode uploaded data
     df_encoded = pd.get_dummies(df)
 
-    # Add any missing expected columns as 0
+    # Add missing expected columns as 0
     for col in required_features:
         if col not in df_encoded.columns:
             df_encoded[col] = 0
 
-    # Keep only required columns in the correct order
+    # Keep only required columns in correct order
     X = df_encoded[required_features]
 
     # Predict
     preds = model.predict(X)
 
-    # Risk score from probability (if available)
-    risk_score = None
+    # Risk score (if available)
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(X)
-        risk_score = (proba.max(axis=1) * 100).round(2)
+        risk_scores = (proba.max(axis=1) * 100).round(2)
+    else:
+        risk_scores = ["N/A"] * len(df)
 
-    # Build output table ONCE (do not overwrite it later)
+    # Build output
     output = df.copy()
     output["Predicted Outcome"] = preds
-    if risk_score is not None:
-        output["Recommended Actions"] = output.apply(recommend_action, axis=1)
-    else:
-        output["Risk Score"] = "N/A"
+    output["Risk Score"] = risk_scores
+    output["Recommended Actions"] = output["Risk Score"].apply(recommend_action)
 
     st.subheader("📊 Prediction Results")
 
-    # Show only key columns (this is where you add your dataframe line)
-    st.dataframe(output[["Predicted Outcome", "Risk Score", "Recommended Actions"]], use_container_width=True)
+    # Show summary table
+    st.dataframe(
+        output[["Predicted Outcome", "Risk Score", "Recommended Actions"]],
+        use_container_width=True
+    )
+
+    # Download button (MUST be inside the if block)
     csv = output.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="⬇️ Download results as CSV",
+        data=csv,
+        file_name="project_risk_predictions.csv",
+        mime="text/csv"
+    )
 
-st.download_button(
-    label="⬇️ Download results as CSV",
-    data=csv,
-    file_name="project_risk_predictions.csv",
-    mime="text/csv"
-)
-
-
-    # Optional: show full output also
+    # Full table expander (also inside the if block)
     with st.expander("See full output table"):
         st.dataframe(output, use_container_width=True)
 
