@@ -44,7 +44,12 @@ if uploaded_file is not None:
         output["Risk Score"] = risk_score
 
     st.subheader("📊 Prediction Results")
-    st.dataframe(output)
+    output = df.copy()
+
+st.subheader("📊 Prediction Results")
+st.dataframe(
+    output[["Predicted Outcome", "Risk Score"]]
+)
 
 else:
     st.info("Please upload a CSV file to get predictions.")
