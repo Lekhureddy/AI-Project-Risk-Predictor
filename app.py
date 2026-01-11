@@ -14,18 +14,18 @@ if uploaded_file is not None:
     with open("model.pkl", "rb") as f:
         model = pickle.load(f)
 
-    # Model expected feature columns
+    # Model expected feature columns (from training)
     required_features = list(model.feature_names_in_)
 
     # One-hot encode uploaded data
     df_encoded = pd.get_dummies(df)
 
-    # Add missing columns as 0
+    # Add any missing expected columns as 0
     for col in required_features:
         if col not in df_encoded.columns:
             df_encoded[col] = 0
 
-    # Keep only required columns in correct order
+    # Keep only required columns in the correct order
     X = df_encoded[required_features]
 
     # Predict
@@ -37,19 +37,22 @@ if uploaded_file is not None:
         proba = model.predict_proba(X)
         risk_score = (proba.max(axis=1) * 100).round(2)
 
-    # Output
+    # Build output table ONCE (do not overwrite it later)
     output = df.copy()
     output["Predicted Outcome"] = preds
     if risk_score is not None:
         output["Risk Score"] = risk_score
+    else:
+        output["Risk Score"] = "N/A"
 
     st.subheader("📊 Prediction Results")
-    output = df.copy()
 
-st.subheader("📊 Prediction Results")
-st.dataframe(
-    output[["Predicted Outcome", "Risk Score"]]
-)
+    # Show only key columns (this is where you add your dataframe line)
+    st.dataframe(output[["Predicted Outcome", "Risk Score"]], use_container_width=True)
+
+    # Optional: show full output also
+    with st.expander("See full output table"):
+        st.dataframe(output, use_container_width=True)
 
 else:
     st.info("Please upload a CSV file to get predictions.")
