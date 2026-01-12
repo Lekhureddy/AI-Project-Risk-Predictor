@@ -50,3 +50,45 @@ The application runs entirely in the browser using Streamlit.
 
 The trained model is stored as:
 
+
+and loaded dynamically by the application.
+
+---
+
+## 🛠️ Tech Stack
+
+- Python
+- Pandas, NumPy
+- Scikit-learn
+- Streamlit
+- GitHub
+- Streamlit Cloud (Deployment)
+- Jira Cloud (Project Management)
+
+---
+
+## 📋 Project Management (Jira)
+
+This project was planned and tracked using **Jira Cloud**, following **Agile project management practices**.
+
+🔗 **Jira Project Board**  
+https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1
+
+### Jira Usage
+- Epics
+- User Stories
+- Tasks
+- Sprint Planning
+- Status tracking (To Do / In Progress / Done)
+
+> 🔒 **Access Note**  
+> The Jira project is private and accessible only to authorized users.  
+> This reflects real-world industry practice.  
+> Screenshots or walkthroughs can be provided upon request.
+
+---
+
+## 📂 Project Structure
+
+
+
