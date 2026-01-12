@@ -45,8 +45,6 @@ with st.expander("✅ How to use this app"):
     )
 
 uploaded_file = st.file_uploader("Upload Project CSV", type=["csv"])
-
-# Stop here if no file
 if uploaded_file is None:
     st.info("Please upload a CSV file to get predictions.")
     st.stop()
@@ -56,27 +54,37 @@ if uploaded_file is None:
 # -----------------------------
 df = pd.read_csv(uploaded_file)
 
+# If user accidentally uploads a dataset that includes Outcome, drop it
+if "Outcome" in df.columns:
+    df = df.drop(columns=["Outcome"])
+
 # -----------------------------
-# Load model
+# Load model + feature columns
 # -----------------------------
 with open("model.pkl", "rb") as f:
     model = pickle.load(f)
 
-# Model expected features
-# (This exists for sklearn models trained with DataFrame)
-required_features = list(model.feature_names_in_)
+with open("feature_columns.pkl", "rb") as f:
+    required_features = pickle.load(f)
 
 # -----------------------------
-# Prepare X using one-hot encoding
+# Encode uploaded data EXACTLY like training
+# Training used: pd.get_dummies(..., drop_first=True) + fillna
 # -----------------------------
-df_encoded = pd.get_dummies(df)
+df_encoded = pd.get_dummies(df, drop_first=True)
 
-# Add missing columns
+# Fill missing numeric values (median) then everything else to 0 (safe)
+num_cols = df_encoded.select_dtypes(include="number").columns
+if len(num_cols) > 0:
+    df_encoded[num_cols] = df_encoded[num_cols].fillna(df_encoded[num_cols].median())
+df_encoded = df_encoded.fillna(0)
+
+# Add missing columns that training had
 for col in required_features:
     if col not in df_encoded.columns:
         df_encoded[col] = 0
 
-# Keep only required columns in correct order
+# Keep ONLY training columns in the same order
 X = df_encoded[required_features]
 
 # -----------------------------
@@ -84,8 +92,7 @@ X = df_encoded[required_features]
 # -----------------------------
 preds = model.predict(X)
 
-# Risk Score (probability-based)
-risk_scores = None
+# Risk score from probabilities
 if hasattr(model, "predict_proba"):
     proba = model.predict_proba(X)
     risk_scores = (proba.max(axis=1) * 100).round(2)
@@ -93,7 +100,7 @@ else:
     risk_scores = pd.Series([pd.NA] * len(df))
 
 # -----------------------------
-# Build output
+# Output table
 # -----------------------------
 output = df.copy()
 output["Predicted Outcome"] = preds
@@ -102,7 +109,7 @@ output["Risk Band"] = output["Risk Score"].apply(risk_band)
 output["Recommended Actions"] = output["Risk Score"].apply(recommend_action)
 
 # -----------------------------
-# Sidebar Filters
+# Sidebar filters
 # -----------------------------
 st.sidebar.header("Filters")
 
@@ -126,10 +133,9 @@ filtered = output[
 ].copy()
 
 # -----------------------------
-# Summary metrics
+# Summary
 # -----------------------------
 st.subheader("📊 Summary")
-
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Total Projects", len(output))
 c2.metric("Shown After Filters", len(filtered))
@@ -137,7 +143,7 @@ c3.metric("Critical Count", int((filtered["Predicted Outcome"].astype(str) == "C
 c4.metric("Avg Risk Score", round(pd.to_numeric(filtered["Risk Score"], errors="coerce").mean(), 2))
 
 # -----------------------------
-# Results Table (Filtered)
+# Results
 # -----------------------------
 st.subheader("📌 Prediction Results (Filtered View)")
 st.dataframe(
@@ -146,10 +152,9 @@ st.dataframe(
 )
 
 # -----------------------------
-# Download buttons
+# Downloads
 # -----------------------------
 st.subheader("⬇️ Downloads")
-
 col1, col2 = st.columns(2)
 
 with col1:
@@ -170,8 +175,5 @@ with col2:
         mime="text/csv"
     )
 
-# -----------------------------
-# Full table (optional)
-# -----------------------------
 with st.expander("See full output table"):
     st.dataframe(output, use_container_width=True)
