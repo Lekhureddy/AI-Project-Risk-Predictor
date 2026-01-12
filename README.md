@@ -3,7 +3,7 @@
 A deployed machine learning application that predicts **project outcomes**, **risk scores**, and **recommended actions** using historical project data.
 
 🔗 **Live App**:  
-ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj
+[ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj](https://ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj.streamlit.app/)
 ---
 
 ## 📌 Problem Statement
