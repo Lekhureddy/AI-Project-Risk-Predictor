@@ -1,46 +1,52 @@
 # 🚀 AI-Powered Project Risk Predictor
 
-A deployed machine learning application that predicts **project outcomes**, **risk scores**, and **recommended actions** using historical project data.
+A deployed **machine learning web application** that predicts **project outcomes**, **risk scores**, and **recommended actions** using historical project performance data.
 
-🔗 **Live App**:  
-[ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj](https://ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj.streamlit.app/)
+This project demonstrates an **end-to-end AI system** integrated with **Agile project management using Jira Cloud**.
+
+---
+
+## 🌐 Live Application
+
+🔗 **Streamlit App**  
+https://ai-project-risk-predictor-jhb6k9onjkann7g5ugpq.streamlit.app
+
 ---
 
 ## 📌 Problem Statement
-Project managers often struggle to proactively identify projects at risk of delay or failure. This tool uses machine learning to predict project performance and provide actionable recommendations before issues escalate.
+
+Project managers often identify risks only after delays or failures occur.  
+Analyzing multiple project metrics manually is inefficient and error-prone.
+
+This project uses **machine learning** to:
+- Predict project outcomes early
+- Quantify risk using a score
+- Recommend mitigation actions proactively
 
 ---
 
 ## 🎯 Solution Overview
-This application allows users to upload a CSV file containing project metrics and receive:
-- Predicted project outcome (On Track / Delayed / Critical)
-- Risk score (0–100)
-- Risk band (Low / Medium / High)
-- Recommended actions for mitigation
 
-The solution is fully deployed and accessible via a web interface.
+Users upload a CSV file containing project performance metrics and receive:
+
+- **Predicted Outcome**
+  - On Track
+  - Delayed
+  - Critical
+- **Risk Score** (0–100)
+- **Risk Band** (Low / Medium / High)
+- **Recommended Actions** for mitigation
+
+The application runs entirely in the browser using Streamlit.
 
 ---
 
 ## 🧠 Machine Learning Model
-- Algorithm: **Random Forest Classifier**
-- Input: Project performance metrics
-- Output: Project outcome classification
-- Risk score derived from prediction probabilities
 
-The model is stored as `model.pkl` and loaded at runtime.
+- **Algorithm**: Random Forest Classifier
+- **Input**: Project performance metrics
+- **Output**: Project outcome classification
+- **Risk Score**: Derived from prediction probabilities
 
----
-
-## 🛠️ Tech Stack
-- Python
-- Pandas, NumPy
-- Scikit-learn
-- Streamlit
-- GitHub
-- Streamlit Cloud (Deployment)
-
----
-
-## 📂 Project Structure
+The trained model is stored as:
 
