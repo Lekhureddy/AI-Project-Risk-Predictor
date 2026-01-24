@@ -1,0 +1,5 @@
+Actual Outcome,Predicted Outcome,Risk Score,Model Used,Decision,Reason
+On Track,On Track,22.5,Random Forest,GO,Risk score is low (22.5). Looks fine, continue monitoring.
+Delayed,Delayed,55.8,Gradient Boosting,HOLD,Risk score is moderate (55.8). Keep tracking and reduce risk.
+Critical,Critical,80.2,Random Forest,ESCALATE,Model predicted Critical, so this needs attention.
+On Track,Delayed,68.1,Extra Trees,HOLD,Risk score is moderate (68.1). Keep tracking and reduce risk.
