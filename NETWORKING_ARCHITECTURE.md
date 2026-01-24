@@ -1,122 +1,170 @@
-# Networking & System Architecture (AI Project Risk Predictor)
+# Networking & System Architecture  
+## AI Project Risk Predictor
+
+This document explains how the AI Project Risk Predictor is structured from a system and networking perspective.  
+The focus is on keeping the architecture simple, practical, and aligned with how early-stage AI products are typically built and deployed.
+
+---
 
 ## System Architecture Diagram
 ![System Architecture](architecture_diagram.png)
 
+---
+
 ## Networking & Communication Flow (Actual Implementation)
 
-This project currently runs as a single-container application and uses a simple but realistic networking model suitable for early-stage AI products.
+The current version of this project runs as a **single-container application**.  
+The networking design is intentionally kept minimal to make the system easy to deploy, test, and maintain.
 
-- The client (user browser) communicates with the application over HTTPS.
-- The Streamlit server runs inside a Docker container and listens on a configurable port (default: 8501).
-- All preprocessing, inference, and post-processing happen within the same container.
-- Model artifacts (`model.pkl`, `feature_columns.pkl`) are loaded locally at runtime.
-- No external API calls are made during inference.
+- Users interact with the application through a web browser.
+- Communication between the browser and the application happens over HTTPS.
+- The Streamlit application runs inside a Docker container and listens on a configurable port (default: **8501**).
+- All data preprocessing, model inference, and result generation happen within the same container.
+- Model artifacts (`model.pkl` and `feature_columns.pkl`) are loaded locally at runtime.
+- No external APIs are called during inference.
 
-This architecture was intentionally kept minimal to:
-- Reduce latency
-- Avoid unnecessary network hops
-- Simplify deployment and CI validation
+This approach was chosen to:
+- Keep latency low
+- Avoid unnecessary network complexity
+- Simplify CI validation and deployment
 
-Future enhancements may include separating model inference into a dedicated service.
+In future iterations, the inference logic could be separated into a dedicated service if scalability requirements increase.
 
+---
 
 ## 1. High-Level Goal
-This project delivers an AI-driven risk prediction service through a web application. Users upload a project dataset (CSV), the system runs inference using a trained ML model, and returns:
-- Predicted project outcome (e.g., On Track / Delayed / Critical)
+
+The goal of this project is to provide an **AI-driven project risk prediction tool** that helps teams understand delivery risk early.
+
+Users upload a project dataset (CSV), and the system returns:
+- Predicted project outcome (On Track / Delayed / Critical)
 - Risk score (0–100)
-- Risk band (Low / Medium / High)
-- Recommended action
+- Risk level (Low / Medium / High)
+- A recommended action based on the risk level
 
 ---
 
-## 2. Architecture Overview (Client–Server)
-**Client (User Browser)**
-- Users access the Streamlit web UI through HTTPS.
-- Users upload a CSV and view/download prediction results.
+## 2. Architecture Overview (Client–Server Model)
 
-**Server (Streamlit App)**
-- Hosts the UI and Python inference logic (`app.py`).
-- Loads `model.pkl` + `feature_columns.pkl`.
-- Preprocesses uploaded CSV to match training feature space.
-- Performs prediction and calculates risk score + band + actions.
+### Client (User Browser)
+- Accesses the Streamlit web interface over HTTPS
+- Uploads project CSV files
+- Views predictions and downloads result files
 
-**Artifacts / Storage**
-- Model artifacts (`model.pkl`, `feature_columns.pkl`) are bundled with the application.
-- Output results can be downloaded as CSV from the UI.
+### Server (Streamlit Application)
+- Hosts the user interface and prediction logic (`app.py`)
+- Loads trained model artifacts (`model.pkl`, `feature_columns.pkl`)
+- Preprocesses uploaded data to match the training feature set
+- Generates predictions, risk scores, and recommendations
 
----
-
-## 3. Network/Data Flow (End-to-End)
-### Step-by-step flow
-1. **DNS + HTTPS Access**
-   - User opens the app URL (Streamlit Cloud or local host).
-   - Browser establishes a secure HTTPS connection (TLS).
-
-2. **Upload Request**
-   - User uploads CSV via Streamlit UI.
-   - File is transmitted to the server over HTTPS.
-
-3. **Preprocessing (Server-Side)**
-   - App reads CSV into pandas.
-   - Applies one-hot encoding to categorical fields.
-   - Adds any missing columns required by the trained model.
-   - Aligns column ordering using `feature_columns.pkl`.
-
-4. **Inference**
-   - App runs `model.predict()` (and `predict_proba()` if supported).
-   - Risk score is computed from probability outputs.
-
-5. **Response Rendering**
-   - Server sends results back to the client UI.
-   - User can filter results and download CSV outputs.
+### Artifacts & Outputs
+- Model artifacts are bundled with the application
+- Prediction results are available for download as CSV files
 
 ---
 
-## 4. Ports, Protocols, and Security Considerations
+## 3. End-to-End Data Flow
+
+1. **Access**
+   - User opens the application URL (local Docker or Streamlit Cloud).
+   - A secure HTTPS connection is established.
+
+2. **Upload**
+   - User uploads a CSV file through the UI.
+   - The file is sent to the server over HTTPS.
+
+3. **Preprocessing**
+   - Data is read into pandas.
+   - Categorical variables are encoded.
+   - Missing columns required by the trained model are added.
+   - Column order is aligned using `feature_columns.pkl`.
+
+4. **Prediction**
+   - The trained model generates outcome predictions.
+   - Probability scores are used to calculate a risk score.
+
+5. **Results**
+   - Results are displayed in the UI.
+   - Users can download the prediction output as a CSV file.
+
+---
+
+## 4. Ports, Protocols, and Security
+
 ### Ports & Protocols
-- **HTTPS (443)**: Standard web access when deployed on Streamlit Cloud.
-- **HTTP (8501)**: Default Streamlit port for local Docker runs.
+- **HTTPS (443)**: Used when deployed via Streamlit Cloud
+- **HTTP (8501)**: Used for local Docker execution
 
-### Security
-- HTTPS encrypts uploaded data in transit.
-- No credentials are required for the current prototype.
-- Recommended improvement for production:
-  - Authentication (SSO/OAuth)
-  - Role-based access control (RBAC)
-  - Input validation + file size limits
-  - Secure secret storage via environment variables
+### Security Considerations
+- Data is encrypted in transit using HTTPS
+- No authentication is required in the current prototype
+- Production-ready improvements could include:
+  - Authentication (SSO / OAuth)
+  - Role-based access control
+  - File size limits and input validation
+  - Secure handling of secrets via environment variables
 
 ---
 
-## 5. Deployment Networking (Docker + CI)
+## 5. Deployment & CI Networking
+
 ### Docker
-- Docker exposes port **8501** and binds to **0.0.0.0** inside container.
-- Local access example:
-  - `http://localhost:8501`
+- The application is containerized using Docker.
+- Port **8501** is exposed and bound to `0.0.0.0` inside the container.
+- This ensures consistent behavior across environments.
 
 ### GitHub Actions (CI)
-- CI validates that dependencies install correctly.
-- CI verifies core files exist and Docker build succeeds.
-- This reduces deployment failures caused by missing artifacts.
+- CI pipelines validate dependency installation
+- Required files are checked before builds
+- Docker image builds are tested automatically
+- This reduces deployment failures caused by missing artifacts or configuration issues
 
 ---
 
 ## 6. Scalability & Reliability (Future Enhancements)
-For larger usage (multiple teams/projects):
-- Add a backend API layer (FastAPI) behind a load balancer
-- Store artifacts in an object store (S3/Blob)
-- Add caching for repeated inferences
-- Add monitoring: latency, error rate, drift detection
+
+For larger usage scenarios involving multiple teams or projects, the following improvements could be considered:
+
+- Introduce a backend API layer (e.g., FastAPI) behind a load balancer
+- Store model artifacts in an object store
+- Cache repeated inference requests
+- Add monitoring for latency, error rates, and data drift
+- Persist prediction results in a SQL database or data warehouse to support historical analysis and reporting
+
+These enhancements are not part of the current implementation but represent a natural evolution path.
 
 ---
 
-## 7. Suggested “Enterprise” Integration (Optional Roadmap)
-- **Jira Integration**
-  - Pull project metrics using Jira API instead of manual CSV uploads.
-- **Data Warehouse Integration**
-  - Store results in Snowflake / SQL database for historical tracking.
-- **Power BI Integration**
-  - Use exported prediction CSV as a reporting layer for stakeholders.
+## 7. Integrations Used and Planned
+
+### Jira (Project Tracking)
+
+Jira was used to manage tasks, risks, and workflow states such as *Planned*, *In Progress*, *At Risk*, and *Completed*.  
+Although the system does not directly pull data via Jira APIs, the prediction outputs are designed to align with Jira-style project tracking and risk categorization.
+
+This makes it easier to conceptually map AI predictions to Jira issues and project boards.
 
 ---
+
+### Power BI (Reporting & Visualization)
+
+Prediction outputs generated by the application are exported as CSV files and used in Power BI dashboards.
+
+Power BI dashboards are used to visualize:
+- Overall project risk distribution
+- High-risk versus low-risk project counts
+- Risk trends and summary metrics
+- Recommendation insights for stakeholders
+
+This allows non-technical users to monitor project health without interacting directly with the ML application.
+
+---
+
+## Summary
+
+The system architecture reflects a **practical, early-stage AI product design**:
+- Simple client-server communication
+- Containerized deployment
+- Clear separation between inference, reporting, and future scalability
+
+The design prioritizes clarity, maintainability, and realistic production readiness over unnecessary complexity.
