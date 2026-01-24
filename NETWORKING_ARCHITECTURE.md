@@ -3,6 +3,24 @@
 ## System Architecture Diagram
 ![System Architecture](architecture_diagram.png)
 
+## Networking & Communication Flow (Actual Implementation)
+
+This project currently runs as a single-container application and uses a simple but realistic networking model suitable for early-stage AI products.
+
+- The client (user browser) communicates with the application over HTTPS.
+- The Streamlit server runs inside a Docker container and listens on a configurable port (default: 8501).
+- All preprocessing, inference, and post-processing happen within the same container.
+- Model artifacts (`model.pkl`, `feature_columns.pkl`) are loaded locally at runtime.
+- No external API calls are made during inference.
+
+This architecture was intentionally kept minimal to:
+- Reduce latency
+- Avoid unnecessary network hops
+- Simplify deployment and CI validation
+
+Future enhancements may include separating model inference into a dedicated service.
+
+
 ## 1. High-Level Goal
 This project delivers an AI-driven risk prediction service through a web application. Users upload a project dataset (CSV), the system runs inference using a trained ML model, and returns:
 - Predicted project outcome (e.g., On Track / Delayed / Critical)
