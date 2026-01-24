@@ -1,5 +1,8 @@
 # Networking & System Architecture (AI Project Risk Predictor)
 
+## System Architecture Diagram
+![System Architecture](architecture_diagram.png)
+
 ## 1. High-Level Goal
 This project delivers an AI-driven risk prediction service through a web application. Users upload a project dataset (CSV), the system runs inference using a trained ML model, and returns:
 - Predicted project outcome (e.g., On Track / Delayed / Critical)
