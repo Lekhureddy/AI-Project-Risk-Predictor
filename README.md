@@ -99,4 +99,118 @@ Build the image:
 ```bash
 docker build -t ai-project-risk-predictor .
 
+DevOps and CI
+
+This project uses a simple DevOps setup that fits a small, working prototype.
+
+Docker is used to ensure the app runs the same way locally and in deployment.
+
+GitHub Actions are configured for basic checks like dependency installation.
+
+The live application is deployed using Streamlit Cloud.
+
+This setup keeps things easy to maintain while still following good engineering practice.
+
+Networking and Architecture
+
+The system currently runs as a single-container application.
+
+Flow overview:
+
+Users access the app through a web browser.
+
+The Streamlit app handles data preprocessing and model inference.
+
+Trained model files (model.pkl, feature_columns.pkl) are loaded locally.
+
+No external APIs are required during prediction.
+
+More details are documented in:
+
+NETWORKING_ARCHITECTURE.md
+
+Java Decision Layer
+
+The machine learning model produces:
+
+a predicted project outcome
+
+a numerical risk score
+
+In real project environments, predictions are usually followed by simple business rules.
+
+The Java module in java-risk-service/:
+
+reads prediction output from a CSV file
+
+applies rule-based logic
+
+generates a decision label (GO / HOLD / ESCALATE)
+
+adds a short explanation for the decision
+
+This reflects how analytics outputs are commonly used in practice.
+
+Power BI Reporting
+
+Prediction results are visualized using Power BI dashboards for stakeholder review.
+
+The dashboards include:
+
+overall risk distribution
+
+decision breakdown
+
+risk score comparison
+
+detailed table views for individual projects
+
+Dashboard files and screenshots are available in:
+
+powerbi/
+
+Project Management (Jira)
+
+Project planning and tracking were done using Jira with a simple Agile workflow.
+
+Jira board (private):
+https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1
+
+The board is private, which reflects real-world project environments.
+Screenshots or walkthroughs can be shared if needed.
+
+Product Perspective
+
+This project was treated as a small product rather than just a model.
+
+Key considerations:
+
+clear problem definition
+
+focus on non-technical users
+
+simple and explainable outputs
+
+separation of prediction, decision logic, and reporting
+
+a realistic path for future improvements
+
+Product-related notes are documented in:
+
+PRODUCT_MANAGEMENT.md
+
+Future Improvements
+
+Possible next steps include:
+
+API-based data ingestion instead of manual CSV uploads
+
+storing historical results in a database for trend analysis
+
+separating inference into a dedicated backend service
+
+adding authentication and access control
+
+basic monitoring for performance and model drift
+
 
