@@ -87,18 +87,6 @@ Which projects need attention right now, and why?
 
 Install dependencies:
 
-```bash
-pip install -r requirements.txt
-
----
-
-## Docker (Local Run)
-
-Build the image:
-
-```bash
-docker build -t ai-project-risk-predictor 
----
 
 ## DevOps and CI
 
