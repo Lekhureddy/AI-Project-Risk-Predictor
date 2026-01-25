@@ -97,7 +97,8 @@ pip install -r requirements.txt
 Build the image:
 
 ```bash
-docker build -t ai-project-risk-predictor .
+docker build -t ai-project-risk-predictor 
+---
 
 ## DevOps and CI
 
