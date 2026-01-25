@@ -99,79 +99,69 @@ Build the image:
 ```bash
 docker build -t ai-project-risk-predictor .
 
-DevOps and CI
+## DevOps and CI
 
 This project uses a simple DevOps setup that fits a small, working prototype.
 
-Docker is used to ensure the app runs the same way locally and in deployment.
+- Docker is used to ensure the application runs the same way locally and in deployment.
+- GitHub Actions are configured for basic checks such as dependency installation.
+- The live application is deployed using Streamlit Cloud.
 
-GitHub Actions are configured for basic checks like dependency installation.
+This setup keeps things easy to maintain while still following good engineering practices.
 
-The live application is deployed using Streamlit Cloud.
+---
 
-This setup keeps things easy to maintain while still following good engineering practice.
-
-Networking and Architecture
+## Networking and Architecture
 
 The system currently runs as a single-container application.
 
 Flow overview:
-
-Users access the app through a web browser.
-
-The Streamlit app handles data preprocessing and model inference.
-
-Trained model files (model.pkl, feature_columns.pkl) are loaded locally.
-
-No external APIs are required during prediction.
+- Users access the app through a web browser.
+- The Streamlit application handles data preprocessing and model inference.
+- Trained model files (model.pkl and feature_columns.pkl) are loaded locally at runtime.
+- No external APIs are required during prediction.
 
 More details are documented in:
+- NETWORKING_ARCHITECTURE.md
 
-NETWORKING_ARCHITECTURE.md
+---
 
-Java Decision Layer
+## Java Decision Layer
 
-The machine learning model produces:
+The machine learning model provides:
+- Predicted project outcome
+- Risk score
 
-a predicted project outcome
+In real project environments, predictions are usually followed by simple business rules before taking action.
 
-a numerical risk score
+The Java module:
+- Reads prediction output from a CSV file
+- Applies rule-based logic
+- Generates a decision label (GO / HOLD / ESCALATE)
+- Adds a short explanation for each decision
 
-In real project environments, predictions are usually followed by simple business rules.
+This reflects how analytics outputs are commonly used in real project workflows.
 
-The Java module in java-risk-service/:
+---
 
-reads prediction output from a CSV file
+## Power BI Reporting
 
-applies rule-based logic
-
-generates a decision label (GO / HOLD / ESCALATE)
-
-adds a short explanation for the decision
-
-This reflects how analytics outputs are commonly used in practice.
-
-Power BI Reporting
-
-Prediction results are visualized using Power BI dashboards for stakeholder review.
+Prediction results are visualized using Power BI dashboards to support stakeholder review.
 
 The dashboards include:
-
-overall risk distribution
-
-decision breakdown
-
-risk score comparison
-
-detailed table views for individual projects
+- High-level risk distribution
+- Decision breakdown
+- Risk score comparisons
+- Detailed table views for individual projects
 
 Dashboard files and screenshots are available in:
+- powerbi/
 
-powerbi/
+---
 
-Project Management (Jira)
+## Project Management (Jira)
 
-Project planning and tracking were done using Jira with a simple Agile workflow.
+Project planning and task tracking were done using Jira with a simple Agile workflow.
 
 Jira board (private):
 https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1
@@ -179,38 +169,30 @@ https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1
 The board is private, which reflects real-world project environments.
 Screenshots or walkthroughs can be shared if needed.
 
-Product Perspective
+---
 
-This project was treated as a small product rather than just a model.
+## Product Perspective
 
-Key considerations:
+This project was approached as a small product rather than a standalone model.
 
-clear problem definition
-
-focus on non-technical users
-
-simple and explainable outputs
-
-separation of prediction, decision logic, and reporting
-
-a realistic path for future improvements
+Key considerations included:
+- Clear problem definition
+- Focus on non-technical users
+- Simple and explainable outputs
+- Separation of prediction, decision logic, and reporting
+- A realistic path for future improvements
 
 Product-related notes are documented in:
+- PRODUCT_MANAGEMENT.md
 
-PRODUCT_MANAGEMENT.md
+---
 
-Future Improvements
+## Future Improvements
 
 Possible next steps include:
-
-API-based data ingestion instead of manual CSV uploads
-
-storing historical results in a database for trend analysis
-
-separating inference into a dedicated backend service
-
-adding authentication and access control
-
-basic monitoring for performance and model drift
-
+- API-based data ingestion instead of manual CSV uploads
+- Storing historical results in a database for trend analysis
+- Separating inference into a dedicated backend service
+- Adding authentication and access control
+- Basic monitoring for performance and model drift
 
