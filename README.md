@@ -86,7 +86,13 @@ Which projects need attention right now, and why?
 ## Running the Application Locally
 
 Install dependencies:
+## Running the Application Locally
 
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## DevOps and CI
 
