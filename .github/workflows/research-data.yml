@@ -8,7 +8,7 @@ on:
       - ".github/workflows/research-data.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-evaluate:
@@ -51,14 +51,44 @@ jobs:
           subprocess.check_call([
               sys.executable, "scripts/train_risk_model.py",
               "data/research/milestone_features.csv",
-              "--out", "artifacts/research-model"
+              "--out", "artifacts/model",
+              "--min-rows", "40",
+              "--min-repositories", "4",
+              "--min-eligible-fraction", "0.35"
           ])
           PY
 
+      - name: Record model provenance
+        if: hashFiles('artifacts/model/model_report.json') != ''
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("artifacts/model/model_report.json")
+          report = json.loads(p.read_text())
+          report["deployment_status"] = "research_demo"
+          report["production_approved"] = False
+          report["limitations"] = [
+              "Small public-repository research cohort",
+              "Current due date may be used as a historical proxy",
+              "Public OSS repositories are not representative of all enterprise teams"
+          ]
+          p.write_text(json.dumps(report, indent=2))
+          PY
+
+      - name: Commit research demo model when training succeeds
+        if: hashFiles('artifacts/model/risk_model.pkl') != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f artifacts/model/risk_model.pkl artifacts/model/model_report.json
+          git commit -m "model: publish validated research demo artifact" || exit 0
+          git push
+
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: risk-copilot-research-results
           path: |
             data/research/*.csv
             data/research/*.json
-            artifacts/research-model/
+            artifacts/model/
