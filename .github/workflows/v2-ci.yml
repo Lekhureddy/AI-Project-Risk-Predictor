@@ -2,7 +2,7 @@ name: Risk Copilot V2 CI
 
 on:
   push:
-    branches: [main, v2-foundation-m0-m4]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  m0-m4-tests:
+  functional-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
           cache: pip
       - name: Install V2 test dependencies
         run: python -m pip install -r requirements-v2.txt
-      - name: Run M0-M4 functional tests
+      - name: Run core functional tests
         env:
           PYTHONPATH: src
-        run: python -m pytest -q tests/test_labels.py tests/test_temporal.py tests/test_pipeline.py
+        run: python -m pytest -q tests/test_labels.py tests/test_temporal.py tests/test_pipeline.py tests/test_data_quality.py
