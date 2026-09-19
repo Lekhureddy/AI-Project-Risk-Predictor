@@ -1,0 +1,319 @@
+{
+  "status": "trained",
+  "validation_profile": {
+    "min_rows": 40,
+    "min_repositories": 4,
+    "min_eligible_fraction": 0.35
+  },
+  "data_quality": {
+    "row_count": 48,
+    "repository_count": 6,
+    "project_count": 12,
+    "eligible_row_count": 24,
+    "eligible_fraction": 0.5,
+    "label_counts": {
+      "Critical": 12,
+      "Delayed": 24,
+      "On Track": 12
+    },
+    "horizon_counts": {
+      "14": 12,
+      "21": 12,
+      "28": 12,
+      "7": 12
+    },
+    "duplicate_identity_count": 0,
+    "missing_required_counts": {
+      "repo": 0,
+      "milestone_title": 0,
+      "snapshot_date": 0,
+      "horizon_days": 0,
+      "due_on_at_snapshot": 0,
+      "due_date_source": 0,
+      "membership_history_complete": 0,
+      "training_eligible": 0,
+      "label": 0,
+      "label_version": 0
+    },
+    "feature_missing_fraction": {
+      "open_issue_count": 0.0,
+      "closed_issue_count": 0.0,
+      "open_pr_count": 0.0,
+      "closed_pr_count": 0.0,
+      "median_open_issue_age_days": 1.0,
+      "scope_added_14d": 0.0,
+      "scope_removed_14d": 0.0,
+      "reviews_14d": 0.0,
+      "median_first_review_latency_hours": 1.0,
+      "commit_count_14d": 0.0,
+      "active_contributors_14d": 0.0
+    },
+    "due_date_source_counts": {
+      "current_api_value": 48
+    },
+    "membership_history_complete_fraction": 0.5,
+    "blockers": [],
+    "warnings": [
+      "feature_missingness_high:median_open_issue_age_days:1.000>0.400",
+      "feature_missingness_high:median_first_review_latency_hours:1.000>0.400"
+    ]
+  },
+  "selected_model": "logistic_regression",
+  "baseline_macro_f1": 0.0,
+  "selected_macro_f1": 0.3333333333333333,
+  "macro_f1_lift_vs_majority": 0.3333333333333333,
+  "candidate_metrics": {
+    "majority_baseline": {
+      "macro_f1": 0.0,
+      "macro_precision": 0.0,
+      "macro_recall": 0.0,
+      "classification_report": {
+        "Critical": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 0.0
+        },
+        "Delayed": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4.0
+        },
+        "accuracy": 0.0,
+        "macro avg": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4.0
+        },
+        "weighted avg": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          4
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "brier_by_class": {
+        "On Track": 0.0,
+        "Delayed": 1.0,
+        "Critical": 1.0
+      },
+      "mean_brier": 0.6666666666666666
+    },
+    "logistic_regression": {
+      "macro_f1": 0.3333333333333333,
+      "macro_precision": 0.5,
+      "macro_recall": 0.25,
+      "classification_report": {
+        "Delayed": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1-score": 0.6666666666666666,
+          "support": 4.0
+        },
+        "On Track": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 0.0
+        },
+        "accuracy": 0.5,
+        "macro avg": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1-score": 0.3333333333333333,
+          "support": 4.0
+        },
+        "weighted avg": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1-score": 0.6666666666666666,
+          "support": 4.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "brier_by_class": {
+        "On Track": 0.5218575542380339,
+        "Delayed": 0.5294115104028787,
+        "Critical": 0.0001752590468064755
+      },
+      "mean_brier": 0.3504814412292397
+    },
+    "hist_gradient_boosting": {
+      "macro_f1": 0.0,
+      "macro_precision": 0.0,
+      "macro_recall": 0.0,
+      "classification_report": {
+        "Critical": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 0.0
+        },
+        "Delayed": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4.0
+        },
+        "accuracy": 0.0,
+        "macro avg": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4.0
+        },
+        "weighted avg": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          4
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "brier_by_class": {
+        "On Track": 0.039999999999999994,
+        "Delayed": 0.36,
+        "Critical": 0.16000000000000003
+      },
+      "mean_brier": 0.18666666666666668
+    }
+  },
+  "calibrated_metrics": {
+    "macro_f1": 0.2,
+    "macro_precision": 0.5,
+    "macro_recall": 0.125,
+    "classification_report": {
+      "Delayed": {
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1-score": 0.4,
+        "support": 4.0
+      },
+      "On Track": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 0.0
+      },
+      "accuracy": 0.25,
+      "macro avg": {
+        "precision": 0.5,
+        "recall": 0.125,
+        "f1-score": 0.2,
+        "support": 4.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1-score": 0.4,
+        "support": 4.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        3,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "brier_by_class": {
+      "On Track": 0.42607382791478815,
+      "Delayed": 0.6505478179226166,
+      "Critical": 0.02832335020263206
+    },
+    "mean_brier": 0.3683149986800123
+  },
+  "train_rows": 20,
+  "test_rows": 4,
+  "train_repositories": [
+    "kubernetes/kubernetes",
+    "nodejs/node",
+    "pytorch/pytorch",
+    "scikit-learn/scikit-learn"
+  ],
+  "test_repositories": [
+    "microsoft/vscode"
+  ],
+  "reference_feature_medians": {
+    "active_contributors_14d": 22.5,
+    "closed_issue_count": 0.0,
+    "closed_pr_count": 0.0,
+    "commit_count_14d": 141.0,
+    "horizon_days": 17.5,
+    "median_first_review_latency_hours": null,
+    "median_open_issue_age_days": null,
+    "open_issue_count": 0.0,
+    "open_pr_count": 0.0,
+    "reviews_14d": 0.0,
+    "scope_added_14d": 0.0,
+    "scope_removed_14d": 0.0
+  },
+  "deployment_status": "research_demo",
+  "production_approved": false,
+  "limitations": [
+    "Small public-repository research cohort",
+    "Current due date may be used as a historical proxy",
+    "Public OSS repositories are not representative of all enterprise teams"
+  ]
+}
