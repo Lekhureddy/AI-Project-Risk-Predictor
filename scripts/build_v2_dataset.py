@@ -28,6 +28,7 @@ def main() -> int:
     parser.add_argument("--max-milestones", type=int, default=None)
     parser.add_argument("--skip-reviews", action="store_true")
     parser.add_argument("--allow-due-date-proxy", action="store_true")
+    parser.add_argument("--allow-membership-proxy", action="store_true")
     args = parser.parse_args()
 
     client = GitHubClient()
@@ -42,6 +43,7 @@ def main() -> int:
             max_milestones=args.max_milestones,
             collect_reviews=not args.skip_reviews,
             allow_due_date_proxy=args.allow_due_date_proxy,
+            allow_membership_proxy=args.allow_membership_proxy,
         )
         all_features.extend(result.features)
         all_labels.extend(result.labels)
