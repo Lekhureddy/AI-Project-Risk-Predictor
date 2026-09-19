@@ -24,3 +24,27 @@ def test_timeline_and_evidence_index():
         }
     ])
     assert index["PR-42"]["source_type"] == "pull_request"
+
+
+def test_timeline_accepts_saved_assessment_created_at():
+    points = build_risk_timeline([
+        {
+            "created_at": "2026-09-19T22:00:00+00:00",
+            "risk_score": 19.54,
+        }
+    ])
+    assert len(points) == 1
+    assert points[0]["risk_score"] == 19.54
+    assert points[0]["risk_band"] == "Low"
+
+
+def test_timeline_skips_malformed_legacy_record_instead_of_crashing():
+    points = build_risk_timeline([
+        {"risk_score": 40},
+        {
+            "created_at": "2026-09-19T22:00:00+00:00",
+            "risk_score": 55,
+        },
+    ])
+    assert len(points) == 1
+    assert points[0]["risk_score"] == 55
