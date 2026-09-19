@@ -2,18 +2,6 @@ name: Research data validation
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/research-data.yml"
-      - "configs/public_repositories.txt"
-      - "scripts/build_research_cohort.py"
-      - "scripts/train_risk_model.py"
-      - "src/risk_copilot/modeling.py"
-      - "src/risk_copilot/data_quality.py"
-      - "src/risk_copilot/ingestion/**"
-      - "src/risk_copilot/features.py"
-      - "src/risk_copilot/temporal.py"
 
 permissions:
   contents: write
