@@ -34,7 +34,7 @@ def _scope_removed_ratio(items, events_by_number, title):
     return len(removed_after_add) / len(ever_added)
 
 
-def collect_repository(client: GitHubClient, repo: str, *, horizons=DEFAULT_HORIZONS, max_milestones=None, collect_reviews=True, allow_due_date_proxy=False, as_of=None):
+def collect_repository(client: GitHubClient, repo: str, *, horizons=DEFAULT_HORIZONS, max_milestones=None, collect_reviews=True, allow_due_date_proxy=False, allow_membership_proxy=False, as_of=None):
     now = as_of or datetime.now(timezone.utc)
     warnings = []
     feature_rows = []
@@ -91,13 +91,19 @@ def collect_repository(client: GitHubClient, repo: str, *, horizons=DEFAULT_HORI
                 commits=commits,
                 snapshot_at=snap_at,
                 horizon_days=horizon,
+                allow_membership_proxy=allow_membership_proxy,
             )
-            row["training_eligible"] = bool(allow_due_date_proxy and row["membership_history_complete"])
-            row["data_quality_note"] = (
-                "current due_on used as historical proxy"
-                if allow_due_date_proxy
-                else "historical due_on changes unavailable; excluded in strict mode"
+            row["training_eligible"] = bool(
+                allow_due_date_proxy and (row["membership_history_complete"] or allow_membership_proxy)
             )
+            notes = []
+            if allow_due_date_proxy:
+                notes.append("current due_on used as historical proxy")
+            else:
+                notes.append("historical due_on changes unavailable; excluded in strict mode")
+            if row.get("membership_proxy_used"):
+                notes.append("current milestone membership used as historical proxy")
+            row["data_quality_note"] = "; ".join(notes)
             row["label"] = label.outcome.value
             row["label_version"] = label.label_version
             feature_rows.append(row)
