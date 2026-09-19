@@ -173,7 +173,9 @@ The model training command refuses to proceed when the dataset quality gate cont
 
 ## Model status
 
-The predictive pipeline is implemented. Final model performance is **not claimed** until a sufficiently diverse real-data cohort passes validation.
+A **research/demo model artifact** is now generated from the public GitHub cohort and committed with its machine-generated report. It is intentionally marked `production_approved: false`.
+
+The current research dataset is small and uses documented historical proxies where GitHub does not expose complete history. The Trust Center displays the measured metrics and limitations rather than presenting the model as enterprise-production validated.
 
 See:
 
