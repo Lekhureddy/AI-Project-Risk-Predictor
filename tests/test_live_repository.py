@@ -76,6 +76,7 @@ def test_current_milestone_features_are_derived_from_live_state():
         3,
         FakeClient(),
         now=datetime(2026, 9, 19, tzinfo=timezone.utc),
+        enriched=True,
     )
     assert result["features"]["open_issue_count"] == 1
     assert result["features"]["open_pr_count"] == 1
