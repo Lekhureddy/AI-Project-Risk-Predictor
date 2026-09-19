@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Environment/secrets
+.env
+*.pem
+*.key
+
+# Local/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Generated V2 data and artifacts
+data/raw/
+data/processed/
+data/smoke/
+artifacts/
+dist/
+build/
+*.egg-info/
