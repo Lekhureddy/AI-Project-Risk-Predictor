@@ -11,13 +11,14 @@ def _safe_median(values):
     return float(median(values)) if values else None
 
 
-def build_snapshot_features(*, milestone, items, events_by_number, reviews_by_number, commits, snapshot_at, horizon_days):
+def build_snapshot_features(*, milestone, items, events_by_number, reviews_by_number, commits, snapshot_at, horizon_days, allow_membership_proxy=False):
     title = str(milestone.get("title") or "")
     milestone_number = milestone.get("number")
     window_start = snapshot_at - timedelta(days=14)
 
     members = []
     history_complete = True
+    membership_proxy_used = False
     scope_added_14d = 0
     scope_removed_14d = 0
 
@@ -33,6 +34,9 @@ def build_snapshot_features(*, milestone, items, events_by_number, reviews_by_nu
             issue_created_at=item.get("created_at"),
         )
         history_complete = history_complete and complete
+        if member is None and current_member and allow_membership_proxy and item_exists_at(item, snapshot_at):
+            member = True
+            membership_proxy_used = True
         if member is True and item_exists_at(item, snapshot_at):
             members.append(item)
 
@@ -93,6 +97,7 @@ def build_snapshot_features(*, milestone, items, events_by_number, reviews_by_nu
         "due_on_at_snapshot": milestone.get("due_on"),
         "due_date_source": milestone.get("due_date_source", "current_api_value"),
         "membership_history_complete": history_complete,
+        "membership_proxy_used": membership_proxy_used,
         "open_issue_count": len(open_issues),
         "closed_issue_count": len(issues) - len(open_issues),
         "open_pr_count": len(open_prs),
