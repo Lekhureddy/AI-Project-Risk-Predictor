@@ -74,15 +74,37 @@ def grouped_split(df: pd.DataFrame, *, test_size: float = 0.2, random_state: int
     if df["repo"].nunique() < 2:
         raise ValueError("at least two repositories are required for grouped validation")
 
-    splitter = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
-    train_idx, test_idx = next(splitter.split(df, groups=df["repo"]))
-    train = df.iloc[train_idx].copy()
-    test = df.iloc[test_idx].copy()
+    desired_labels = set(df["label"].unique())
+    best = None
+    for offset in range(100):
+        splitter = GroupShuffleSplit(
+            n_splits=1,
+            test_size=test_size,
+            random_state=random_state + offset,
+        )
+        train_idx, test_idx = next(splitter.split(df, groups=df["repo"]))
+        train = df.iloc[train_idx].copy()
+        test = df.iloc[test_idx].copy()
 
-    if set(train["repo"]) & set(test["repo"]):
-        raise AssertionError("repository leakage detected across train/test split")
-    if train["label"].nunique() < 2:
-        raise ValueError("training split has insufficient label diversity")
+        if set(train["repo"]) & set(test["repo"]):
+            raise AssertionError("repository leakage detected across train/test split")
+
+        train_labels = set(train["label"].unique())
+        test_labels = set(test["label"].unique())
+        score = len(train_labels & desired_labels) + len(test_labels & desired_labels)
+        if best is None or score > best[0]:
+            best = (score, train, test)
+
+        if desired_labels.issubset(train_labels) and desired_labels.issubset(test_labels):
+            return SplitData(train=train, test=test)
+
+    if best is None:
+        raise ValueError("unable to create grouped validation split")
+    _, train, test = best
+    if train["label"].nunique() < 2 or test["label"].nunique() < 2:
+        raise ValueError(
+            "grouped split cannot provide adequate label diversity; collect more repositories per outcome"
+        )
     return SplitData(train=train, test=test)
 
 
