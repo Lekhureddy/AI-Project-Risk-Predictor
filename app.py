@@ -30,6 +30,8 @@ st.set_page_config(
 )
 
 service = RiskCopilotService(db_path=os.getenv("RISK_COPILOT_DB", "data/risk_copilot.db"))
+model_report = service.model_report()
+production_approved = bool(model_report.get("production_approved", False))
 
 
 FEATURE_LABELS = {
@@ -294,6 +296,9 @@ def project_page(demo_mode: bool):
 def assessment_page():
     st.title("New Assessment")
 
+    if service.model_available and not production_approved:
+        st.warning("This assessment uses the research/demo model. It is not production-approved.")
+
     if not service.model_available:
         st.warning(
             "The validated V2 model artifact is not available yet. "
@@ -336,6 +341,8 @@ def assessment_page():
 
 def decision_lab_page():
     st.title("Decision Lab")
+    if service.model_available and not production_approved:
+        st.warning("Decision Lab is using the research/demo model; scenario outputs are for product demonstration only.")
     st.write(
         "Explore how the predictive model responds to explicit feature scenarios. "
         "Results are model-based scenario estimates, not causal forecasts."
@@ -601,9 +608,11 @@ def trust_page():
 
 
 st.sidebar.title("Risk Copilot")
-demo_mode = st.sidebar.toggle("Demo mode", value=not service.model_available)
+demo_mode = st.sidebar.toggle("Demo mode", value=(not service.model_available) or (not production_approved))
 if not service.model_available:
-    st.sidebar.caption("Validated model unavailable — demo mode is recommended.")
+    st.sidebar.caption("Model artifact unavailable — demo mode is recommended.")
+elif not production_approved:
+    st.sidebar.caption("Research/demo model loaded — production use is not approved.")
 
 page = st.sidebar.radio(
     "Workspace",
