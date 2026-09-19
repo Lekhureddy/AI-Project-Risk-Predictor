@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from risk_copilot.demo import demo_assessments
 from risk_copilot.evidence_graph import build_evidence_graph
 from risk_copilot.modeling import FEATURE_COLUMNS
+from risk_copilot.live_repository import inspect_milestone, list_due_milestones
 from risk_copilot.portfolio import build_portfolio_summary
 from risk_copilot.service import RiskCopilotService
 from risk_copilot.simulation import simulate_scenario
@@ -428,6 +429,49 @@ def interventions_page(demo_mode: bool):
         st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
 
 
+def repository_page():
+    st.title("Repository Explorer")
+    st.write(
+        "Inspect current public GitHub milestone evidence directly. "
+        "This view does not claim historical risk unless the validated model pipeline is available."
+    )
+
+    repo = st.text_input("Public GitHub repository", "pytorch/pytorch")
+    if st.button("Load milestones"):
+        try:
+            st.session_state["repo_milestones"] = list_due_milestones(repo)
+            st.session_state["repo_name"] = repo
+        except Exception as exc:
+            st.error(f"GitHub data could not be loaded: {exc}")
+
+    milestones = st.session_state.get("repo_milestones", [])
+    if milestones:
+        options = {
+            f"#{m['number']} · {m['title']} · {m['due_on']}": m["number"]
+            for m in milestones
+        }
+        selected = st.selectbox("Milestone", list(options))
+        if st.button("Inspect evidence"):
+            try:
+                result = inspect_milestone(
+                    st.session_state.get("repo_name", repo),
+                    options[selected],
+                )
+                st.subheader(result["milestone"]["title"] or "Milestone")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Items", result["summary"]["items"])
+                c2.metric("Issues", result["summary"]["issues"])
+                c3.metric("Pull requests", result["summary"]["pull_requests"])
+                st.caption(result["note"])
+                for item in result["evidence"][:50]:
+                    with st.expander(f"{item['evidence_id']} · {item['title']}"):
+                        st.write(item["text"] or "No body text available.")
+                        if item["url"]:
+                            st.link_button("Open on GitHub", item["url"])
+            except Exception as exc:
+                st.error(f"Milestone evidence could not be loaded: {exc}")
+
+
 def trust_page():
     st.title("AI Trust Center")
     trust = service.trust_center()
@@ -473,6 +517,7 @@ page = st.sidebar.radio(
     [
         "Portfolio",
         "Project Intelligence",
+        "Repository Explorer",
         "New Assessment",
         "Decision Lab",
         "Intervention Memory",
@@ -487,6 +532,8 @@ if page == "Portfolio":
     portfolio_page(demo_mode)
 elif page == "Project Intelligence":
     project_page(demo_mode)
+elif page == "Repository Explorer":
+    repository_page()
 elif page == "New Assessment":
     assessment_page()
 elif page == "Decision Lab":
