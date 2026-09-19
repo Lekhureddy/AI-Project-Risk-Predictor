@@ -62,7 +62,8 @@ jobs:
               "--out", "artifacts/model",
               "--min-rows", "40",
               "--min-repositories", "4",
-              "--min-eligible-fraction", "0.35"
+              "--min-eligible-fraction", "0.80",
+              "--test-size", "0.34"
           ])
           PY
 
@@ -78,6 +79,7 @@ jobs:
           report["limitations"] = [
               "Small public-repository research cohort",
               "Current due date may be used as a historical proxy",
+              "Current milestone membership may be used as a historical proxy when GitHub history is incomplete",
               "Public OSS repositories are not representative of all enterprise teams"
           ]
           p.write_text(json.dumps(report, indent=2))
