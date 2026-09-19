@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pickle
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,9 +11,7 @@ import pandas as pd
 
 from .challenge import challenge_assessment
 from .demo import demo_assessments, demo_drivers, demo_evidence, demo_timeline
-from .evidence import build_evidence_index
 from .evidence_graph import build_evidence_graph, graph_payload
-from .evaluation import evaluate_narrative
 from .interventions import create_intervention
 from .modeling import FEATURE_COLUMNS, risk_score_from_probabilities
 from .portfolio import build_portfolio_summary
@@ -26,13 +25,15 @@ class RiskCopilotService:
     def __init__(
         self,
         *,
-        model_path: str = "artifacts/model/risk_model.pkl",
-        model_report_path: str = "artifacts/model/model_report.json",
-        db_path: str = "data/risk_copilot.db",
+        model_path: str | None = None,
+        model_report_path: str | None = None,
+        db_path: str | None = None,
     ) -> None:
-        self.model_path = Path(model_path)
-        self.model_report_path = Path(model_report_path)
-        self.store = SQLiteStore(db_path)
+        self.model_path = Path(model_path or os.getenv("RISK_COPILOT_MODEL", "artifacts/model/risk_model.pkl"))
+        self.model_report_path = Path(
+            model_report_path or os.getenv("RISK_COPILOT_MODEL_REPORT", "artifacts/model/model_report.json")
+        )
+        self.store = SQLiteStore(db_path or os.getenv("RISK_COPILOT_DB", "data/risk_copilot.db"))
         self._model = None
 
     @property
@@ -145,6 +146,9 @@ class RiskCopilotService:
         return intervention
 
     def trust_center(self, *, narrative_results: list[dict] | None = None, evidence: list[dict] | None = None) -> dict:
+        from .evidence import build_evidence_index
+        from .evaluation import evaluate_narrative
+
         evaluations = []
         if narrative_results and evidence is not None:
             index = build_evidence_index(evidence)
