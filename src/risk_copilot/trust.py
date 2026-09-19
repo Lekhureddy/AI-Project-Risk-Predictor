@@ -37,6 +37,9 @@ def build_trust_summary(
             "mean_brier": (model_report.get("calibrated_metrics") or {}).get("mean_brier"),
             "baseline_macro_f1": model_report.get("baseline_macro_f1"),
             "lift_vs_baseline": model_report.get("macro_f1_lift_vs_majority"),
+            "deployment_status": model_report.get("deployment_status"),
+            "production_approved": model_report.get("production_approved", False),
+            "limitations": model_report.get("limitations", []),
         },
         "generative_ai": {
             "evaluation_count": len(narrative_evaluations),
