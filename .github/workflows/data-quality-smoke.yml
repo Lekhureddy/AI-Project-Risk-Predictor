@@ -1,13 +1,6 @@
 name: Risk Copilot data-quality smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "src/risk_copilot/**"
-      - "scripts/build_v2_dataset.py"
-      - "scripts/validate_v2_dataset.py"
-      - ".github/workflows/data-quality-smoke.yml"
   workflow_dispatch:
 
 permissions:
@@ -34,6 +27,7 @@ jobs:
         run: |
           python scripts/validate_v2_dataset.py             data/smoke/milestone_features.csv             --report data/smoke/data_quality_report.json             --min-rows 1             --min-repositories 1             --min-eligible-fraction 0.0 || true
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: public-data-smoke-report
           path: |
