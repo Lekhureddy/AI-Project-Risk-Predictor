@@ -28,7 +28,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONPATH: src
         run: |
-          python scripts/build_research_cohort.py             --repos-file configs/public_repositories.txt             --out data/research             --max-milestones 4
+          python scripts/build_research_cohort.py             --repos-file configs/public_repositories.txt             --out data/research             --max-milestones 2
 
       - name: Produce data-quality report
         env:
