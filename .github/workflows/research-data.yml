@@ -1,0 +1,64 @@
+name: Research data validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/research-data.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Build public research cohort
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONPATH: src
+        run: |
+          python scripts/build_research_cohort.py             --repos-file configs/public_repositories.txt             --out data/research             --max-milestones 4
+
+      - name: Produce data-quality report
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/validate_v2_dataset.py             data/research/milestone_features.csv             --report data/research/data_quality_report.json             --min-rows 40             --min-repositories 4             --min-eligible-fraction 0.35 || true
+
+      - name: Attempt research model training only when gate passes
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, sys
+          p = pathlib.Path("data/research/data_quality_report.json")
+          report = json.loads(p.read_text())
+          if report.get("blockers"):
+              print("Research model not trained because blockers remain:")
+              print(json.dumps(report["blockers"], indent=2))
+              sys.exit(0)
+          subprocess.check_call([
+              sys.executable, "scripts/train_risk_model.py",
+              "data/research/milestone_features.csv",
+              "--out", "artifacts/research-model"
+          ])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: risk-copilot-research-results
+          path: |
+            data/research/*.csv
+            data/research/*.json
+            artifacts/research-model/
