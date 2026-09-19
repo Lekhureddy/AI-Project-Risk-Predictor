@@ -430,7 +430,14 @@ def decision_lab_page():
             key=f"scenario_{feature}",
         )
 
-    if st.button("Run scenario", disabled=not changes, type="primary"):
+    has_real_change = any(
+        float(changes[feature]) != float(current[feature])
+        for feature in changes
+    )
+    if changes and not has_real_change:
+        st.caption("Change at least one scenario value before running the comparison.")
+
+    if st.button("Run scenario", disabled=not has_real_change, type="primary"):
         result = simulate_scenario(model, current, changes)
         c1, c2, c3 = st.columns(3)
         c1.metric("Current risk", result["current_risk_score"])
