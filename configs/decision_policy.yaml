@@ -1,0 +1,28 @@
+risk_bands:
+  low:
+    min: 0
+    max: 34.99
+  medium:
+    min: 35
+    max: 59.99
+  high:
+    min: 60
+    max: 79.99
+  critical:
+    min: 80
+    max: 100
+
+human_review:
+  required_for:
+    - high
+    - critical
+
+automation:
+  write_actions_enabled: false
+
+scenario_lab:
+  causal_claims_allowed: false
+
+evidence:
+  require_verified_citations: true
+  drop_unverified_claims: true
