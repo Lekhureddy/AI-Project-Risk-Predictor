@@ -64,3 +64,21 @@ def test_m0_to_m4_end_to_end_with_explicit_due_date_proxy_flag():
     assert t14["training_eligible"] is True
     assert t14["due_date_source"] == "current_api_value"
     assert t14["active_contributors_14d"] == 1
+
+
+def test_membership_proxy_is_explicit_and_training_eligible_only_when_enabled():
+    class ProxyClient(FakeClient):
+        def list_issue_events(self, repo, issue_number):
+            return []
+
+    result = collect_repository(
+        ProxyClient(),
+        "acme/demo",
+        allow_due_date_proxy=True,
+        allow_membership_proxy=True,
+        as_of=datetime(2026, 3, 1, tzinfo=timezone.utc),
+    )
+    assert result.features
+    assert all(row["training_eligible"] is True for row in result.features)
+    assert any(row["membership_proxy_used"] for row in result.features)
+    assert any("membership" in row["data_quality_note"] for row in result.features)
