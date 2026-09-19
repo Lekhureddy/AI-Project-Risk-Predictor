@@ -1,127 +1,201 @@
-# Risk Copilot — AI Project Risk Predictor
+# Risk Copilot
 
-Risk Copilot is an evidence-oriented delivery intelligence project for identifying project risk early, explaining the signals behind that risk, and supporting human decision-making.
+Risk Copilot is an evidence-grounded delivery intelligence application for engineering teams. It combines project-risk prediction, risk trends, verifiable project evidence, human challenge workflows, scenario analysis, intervention tracking, and AI quality monitoring.
 
-The repository is evolving from an earlier CSV-based prediction proof of concept into a system built around real engineering-delivery data, temporal features, measurable model quality, and later evidence-grounded AI explanations.
+The product is designed to answer:
 
-## Current status
+1. Which delivery targets need attention?
+2. Why is the risk changing?
+3. What project evidence supports the assessment?
+4. What options can a manager evaluate?
+5. How trustworthy is the model and AI explanation?
 
-The original Streamlit application remains available as a working proof of concept:
+## Live application
+
+The existing Streamlit deployment remains the public entry point:
 
 https://ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj.streamlit.app/
 
-The new Risk Copilot pipeline is being built in parallel. It currently includes:
+The application automatically uses clearly labeled demo mode when a validated V2 model artifact is not available. Demo records are never presented as measured production performance.
 
-- GitHub REST data ingestion
-- historical point-in-time snapshots
-- deterministic project-outcome labels
-- temporal engineering-delivery features
-- data-quality gates
-- automated functional tests and CI
-- public-data smoke testing
+## Product capabilities
 
-The legacy synthetic dataset and human-authored risk field are not treated as training truth for the new model.
+### Portfolio intelligence
 
-## Product direction
+- risk-ranked project view
+- current risk band and score
+- emerging-risk detection
+- portfolio-level attention queue
 
-Risk Copilot is designed to answer four practical questions:
+### Project intelligence
 
-1. Which delivery targets need attention?
-2. What signals are driving the risk?
-3. What project evidence supports the assessment?
-4. What actions could a manager evaluate before deciding?
+- historical risk timeline
+- model-grounded risk drivers
+- issue / pull-request evidence
+- evidence graph
+- challenge workflow for stale or disputed evidence
 
-The final application will combine predictive risk intelligence, risk trends, evidence-backed explanations, decision support, human feedback, and AI quality monitoring.
+### Decision support
 
-## Architecture
+- what-if feature scenarios
+- explicit non-causal scenario disclaimer
+- intervention accept / modify / reject workflow
+- observed before / after outcome tracking
+
+### AI layer
+
+- provider abstraction
+- optional local Ollama structured-output provider
+- deterministic zero-cost fallback
+- strict structured output
+- citation verification
+- unsupported-claim removal
+- abstention path
+- prompt-injection-aware evidence handling
+
+### Trust and safety
+
+- data quality gates
+- repository-grouped model validation
+- calibration / Brier reporting
+- citation-validity evaluation
+- PII and secret redaction
+- adversarial test cases
+- Promptfoo red-team configuration
+- human feedback collection
+- AI Trust Center
+
+## Data pipeline
 
 ```text
-GitHub engineering data
-        |
-        v
-Temporal data pipeline
-        |
-        v
-Quality and leakage checks
-        |
-        v
-Calibrated risk model
-        |
-        v
-Evidence-grounded AI layer
-        |
-        v
-Risk Copilot web application
+GitHub REST
+    |
+    v
+Milestones / issues / PRs / events / reviews / commits
+    |
+    v
+Historical point-in-time reconstruction
+    |
+    v
+Data-quality and leakage gates
+    |
+    v
+Outcome labels + engineering features
+    |
+    v
+Baseline comparison + calibrated model
+    |
+    v
+Risk score / timeline / explanations
+    |
+    v
+Verified evidence + decision workflows
 ```
 
-The V2 implementation lives primarily under:
+The legacy CSV model and human-authored risk field are not treated as training truth for the V2 model.
+
+## Application architecture
 
 ```text
-src/risk_copilot/
-scripts/
-tests/
-docs/v2/
-.github/workflows/
+Streamlit Web UI
+      |
+      +----------------------+
+      |                      |
+      v                      v
+Risk Copilot Service     FastAPI
+      |                      |
+      +----------+-----------+
+                 |
+     +-----------+-----------+
+     |           |           |
+ Prediction   Evidence    Decisions
+     |           |           |
+     +-----------+-----------+
+                 |
+              SQLite
 ```
 
-## Data integrity
+SQLite is intentionally used for the free demo / local build. The documented enterprise path replaces it with managed PostgreSQL and adds SSO/RBAC, tenant isolation, centralized audit logging, and retention controls.
 
-Risk Copilot does not silently treat unavailable historical values as facts. Data provenance and training eligibility are recorded explicitly, and the predictive model is trained only after the dataset passes the quality gate.
+## Repository structure
 
-See:
+```text
+app.py                         Streamlit product UI
+api/                           FastAPI service
+src/risk_copilot/              Core product logic
+scripts/                       Data and training commands
+configs/                       Decision policy and public research cohort
+evals/                         AI evaluation / red-team assets
+tests/                         Functional and integration tests
+docs/v2/                       Architecture, security, model and deployment docs
+.github/workflows/             CI and research-data validation
+Dockerfile                     Web container
+Dockerfile.api                 API container
+docker-compose.yml             Local full stack
+```
 
-- `docs/v2/ARCHITECTURE.md`
-- `docs/v2/DATA_CONTRACT.md`
-- `docs/v2/DATA_QUALITY_GATE.md`
-- `docs/v2/TEST_PLAN.md`
-- `docs/v2/DATA_AND_LABEL_DECISION.md`
-
-## Running tests
+## Quick start
 
 ```bash
 python -m pip install -r requirements-dev.txt
+PYTHONPATH=src streamlit run app.py
+```
+
+API:
+
+```bash
+PYTHONPATH=src uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+Full local stack:
+
+```bash
+docker compose up --build
+```
+
+## Tests
+
+```bash
 PYTHONPATH=src python -m pytest -q
 ```
 
-## Building a public-data sample
+CI additionally smoke-tests both the API and Streamlit application and builds both Docker images.
 
-Set an optional GitHub token for a higher API rate limit:
+## Public-data research
 
-```bash
-export GITHUB_TOKEN=your_token
-```
-
-Then run the dataset builder against a public repository:
+The repository includes a multi-repository GitHub research cohort builder and automated data-quality report.
 
 ```bash
-PYTHONPATH=src python scripts/build_v2_dataset.py \
-  --repo owner/repository \
-  --out data/processed
+PYTHONPATH=src python scripts/build_research_cohort.py --out data/research
 ```
 
-Validate the resulting dataset before model training:
+The model training command refuses to proceed when the dataset quality gate contains blocking issues.
 
-```bash
-PYTHONPATH=src python scripts/validate_v2_dataset.py \
-  data/processed/milestone_features.csv
-```
+## Model status
 
-## Legacy proof-of-concept assets
+The predictive pipeline is implemented. Final model performance is **not claimed** until a sufficiently diverse real-data cohort passes validation.
 
-The following files belong to the earlier working prototype and are kept for reproducibility while the new application is developed:
+See:
 
-- `app.py`
-- `model.pkl`
-- `feature_columns.pkl`
-- `AI_BASED_PREDICATION.ipynb`
-- `updated_report1.csv`
-- `java-risk-service/`
-- `powerbi/`
+- `docs/v2/MODEL_CARD.md`
+- `docs/v2/MODEL_VALIDATION.md`
+- `docs/v2/DATA_QUALITY_GATE.md`
 
-They should not be interpreted as the final Risk Copilot architecture or model-validation evidence.
+## Documentation
 
-## Technology
+- `docs/v2/ARCHITECTURE.md`
+- `docs/v2/API.md`
+- `docs/v2/SECURITY.md`
+- `docs/v2/DECISION_INTELLIGENCE.md`
+- `docs/v2/DEPLOYMENT.md`
+- `docs/v2/TEST_PLAN.md`
 
-Python, Streamlit, pandas, scikit-learn, GitHub REST API, Docker, pytest, and GitHub Actions.
+## Legacy proof of concept
 
-The project prioritizes free and open-source tooling where practical.
+The repository still contains the earlier CSV-based artifacts for historical reproducibility. They are not the current Risk Copilot product architecture and should not be used as evidence of V2 model performance.
+
+## Product principle
+
+Risk Copilot is decision support, not an autonomous project manager.
+
+The model predicts. The system explains and verifies. The human decides.
