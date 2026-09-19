@@ -13,6 +13,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from risk_copilot.demo import demo_assessments
+from risk_copilot.digest import build_weekly_digest
 from risk_copilot.evidence_graph import build_evidence_graph
 from risk_copilot.modeling import FEATURE_COLUMNS
 from risk_copilot.live_repository import inspect_milestone, list_due_milestones
@@ -429,6 +430,54 @@ def interventions_page(demo_mode: bool):
         st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
 
 
+def digest_page(demo_mode: bool):
+    st.title("Weekly Risk Digest")
+    current = demo_assessments() if demo_mode else service.store.list_assessments()
+    if not current:
+        st.info("No assessments are available for a digest yet.")
+        return
+
+    if demo_mode:
+        previous = []
+        for item in current:
+            row = dict(item)
+            row["risk_score"] = float(item["risk_score"]) - float(item.get("risk_change", 0))
+            previous.append(row)
+    else:
+        grouped = {}
+        for item in current:
+            grouped.setdefault(item["project_id"], []).append(item)
+        previous = []
+        latest = []
+        for items in grouped.values():
+            ordered = sorted(items, key=lambda x: x["created_at"])
+            latest.append(ordered[-1])
+            if len(ordered) > 1:
+                previous.append(ordered[-2])
+        current = latest
+
+    digest = build_weekly_digest(previous, current)
+    c1, c2 = st.columns(2)
+    c1.metric("Projects reviewed", digest["project_count"])
+    c2.metric("Need attention", digest["attention_count"])
+
+    st.subheader("Worsening")
+    if digest["worsening"]:
+        st.dataframe(pd.DataFrame(digest["worsening"]), use_container_width=True, hide_index=True)
+    else:
+        st.caption("No worsening projects in the comparison window.")
+
+    st.subheader("Improving")
+    if digest["improving"]:
+        st.dataframe(pd.DataFrame(digest["improving"]), use_container_width=True, hide_index=True)
+    else:
+        st.caption("No improving projects in the comparison window.")
+
+    if digest["new"]:
+        st.subheader("New")
+        st.dataframe(pd.DataFrame(digest["new"]), use_container_width=True, hide_index=True)
+
+
 def repository_page():
     st.title("Repository Explorer")
     st.write(
@@ -517,6 +566,7 @@ page = st.sidebar.radio(
     [
         "Portfolio",
         "Project Intelligence",
+        "Weekly Risk Digest",
         "Repository Explorer",
         "New Assessment",
         "Decision Lab",
@@ -532,6 +582,8 @@ if page == "Portfolio":
     portfolio_page(demo_mode)
 elif page == "Project Intelligence":
     project_page(demo_mode)
+elif page == "Weekly Risk Digest":
+    digest_page(demo_mode)
 elif page == "Repository Explorer":
     repository_page()
 elif page == "New Assessment":
