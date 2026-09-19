@@ -155,3 +155,15 @@ def narrative(request: NarrativeRequest):
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/github/assess")
+def github_assess(repo: str, milestone_number: int):
+    try:
+        return service.assess_github_milestone(repo=repo, milestone_number=milestone_number)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
