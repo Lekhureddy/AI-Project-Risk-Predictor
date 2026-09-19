@@ -31,13 +31,13 @@ def explain_prediction(model, row: dict | pd.Series, reference_frame: pd.DataFra
     for feature in FEATURE_COLUMNS:
         if feature not in base.columns:
             base[feature] = None
-    base = base[list(FEATURE_COLUMNS)].apply(pd.to_numeric, errors="coerce")
+    base = base[list(FEATURE_COLUMNS)].apply(pd.to_numeric, errors="coerce").astype(float)
 
     reference = reference_frame.copy()
     for feature in FEATURE_COLUMNS:
         if feature not in reference.columns:
             reference[feature] = None
-    reference = reference[list(FEATURE_COLUMNS)].apply(pd.to_numeric, errors="coerce")
+    reference = reference[list(FEATURE_COLUMNS)].apply(pd.to_numeric, errors="coerce").astype(float)
     medians = reference.median(numeric_only=True)
 
     current_score = _risk_score(model, base)
