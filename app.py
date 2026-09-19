@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import networkx as nx
@@ -264,6 +265,28 @@ def project_page(demo_mode: bool):
             "from the narrative review."
         )
         st.caption(result["challenge"]["note"])
+
+    st.subheader("Was this assessment useful?")
+    feedback_col1, feedback_col2 = st.columns(2)
+    note = st.text_input("Optional feedback note", key=f"feedback_note_{latest['assessment_id']}")
+    with feedback_col1:
+        if st.button("Agree", key=f"agree_{latest['assessment_id']}"):
+            service.store.save_feedback(
+                assessment_id=latest["assessment_id"],
+                verdict="agree",
+                note=note or None,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+            st.success("Feedback recorded.")
+    with feedback_col2:
+        if st.button("Disagree", key=f"disagree_{latest['assessment_id']}"):
+            service.store.save_feedback(
+                assessment_id=latest["assessment_id"],
+                verdict="disagree",
+                note=note or None,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+            st.success("Feedback recorded.")
 
 
 def assessment_page():
