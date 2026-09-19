@@ -6,6 +6,14 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/research-data.yml"
+      - "configs/public_repositories.txt"
+      - "scripts/build_research_cohort.py"
+      - "scripts/train_risk_model.py"
+      - "src/risk_copilot/modeling.py"
+      - "src/risk_copilot/data_quality.py"
+      - "src/risk_copilot/ingestion/**"
+      - "src/risk_copilot/features.py"
+      - "src/risk_copilot/temporal.py"
 
 permissions:
   contents: write
@@ -82,7 +90,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f artifacts/model/risk_model.pkl artifacts/model/model_report.json
           git commit -m "model: publish validated research demo artifact" || exit 0
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
 
       - uses: actions/upload-artifact@v4
         if: always()
