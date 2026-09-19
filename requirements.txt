@@ -2,3 +2,5 @@ streamlit
 pandas
 numpy
 scikit-learn
+networkx>=3.4,<4
+plotly>=5,<7
