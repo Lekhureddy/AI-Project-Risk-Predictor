@@ -58,13 +58,27 @@ def inspect_milestone(repo: str, milestone_number: int, client: GitHubClient | N
         },
         "evidence": evidence,
         "note": (
-            "This view is current repository evidence. Historical risk inference requires "
-            "the point-in-time dataset pipeline and a validated model."
+            "This view uses current repository evidence. Historical risk inference "
+            "uses the separate point-in-time research pipeline."
         ),
     }
 
 
-def current_milestone_features(repo: str, milestone_number: int, client: GitHubClient | None = None, now=None) -> dict:
+def current_milestone_features(
+    repo: str,
+    milestone_number: int,
+    client: GitHubClient | None = None,
+    now=None,
+    *,
+    enriched: bool = False,
+) -> dict:
+    """
+    Build current-state features with a low-API default.
+
+    Default mode needs milestone + milestone-items + commits requests only.
+    Enriched mode additionally requests issue events and PR reviews and should
+    only be used when authenticated API budget is available.
+    """
     client = client or GitHubClient()
     now = now or datetime.now(timezone.utc)
     milestones = {int(m["number"]): m for m in client.list_milestones(repo, state="all")}
@@ -78,44 +92,60 @@ def current_milestone_features(repo: str, milestone_number: int, client: GitHubC
     open_issues = [x for x in issues if not x.get("closed_at")]
     open_prs = [x for x in prs if not x.get("closed_at")]
 
+    window_start = now - timedelta(days=14)
+
     issue_ages = []
     for item in open_issues:
         created = parse_dt(item.get("created_at"))
         if created:
             issue_ages.append((now - created).total_seconds() / 86400.0)
 
-    window_start = now - timedelta(days=14)
+    # Low-API proxies available from the milestone issue listing itself.
     scope_added = 0
-    scope_removed = 0
-    review_latencies = []
-    reviews_14d = 0
-
     for item in items:
-        for event in client.list_issue_events(repo, int(item["number"])):
-            event_at = parse_dt(event.get("created_at"))
-            if not event_at or not (window_start < event_at <= now):
-                continue
-            if event.get("event") == "milestoned":
-                scope_added += 1
-            elif event.get("event") == "demilestoned":
-                scope_removed += 1
+        created = parse_dt(item.get("created_at"))
+        if created and window_start < created <= now:
+            scope_added += 1
 
-    for pr in prs:
-        created = parse_dt(pr.get("created_at"))
-        reviews = client.list_pull_reviews(repo, int(pr["number"]))
-        valid = []
-        for review in reviews:
-            submitted = parse_dt(review.get("submitted_at"))
-            if submitted and submitted <= now:
-                valid.append(submitted)
-                if submitted > window_start:
-                    reviews_14d += 1
-        if created and valid:
-            first = min(valid)
-            if first >= created:
-                review_latencies.append((first - created).total_seconds() / 3600.0)
+    scope_removed = None
+    review_latencies = []
+    reviews_14d = None
 
-    commits = client.list_commits(repo, since=window_start.isoformat(), until=now.isoformat())
+    # Optional expensive enrichment. Avoid N+1 calls in the default web flow.
+    if enriched:
+        scope_added = 0
+        scope_removed = 0
+        reviews_14d = 0
+        for item in items:
+            for event in client.list_issue_events(repo, int(item["number"])):
+                event_at = parse_dt(event.get("created_at"))
+                if not event_at or not (window_start < event_at <= now):
+                    continue
+                if event.get("event") == "milestoned":
+                    scope_added += 1
+                elif event.get("event") == "demilestoned":
+                    scope_removed += 1
+
+        for pr in prs:
+            created = parse_dt(pr.get("created_at"))
+            reviews = client.list_pull_reviews(repo, int(pr["number"]))
+            valid = []
+            for review in reviews:
+                submitted = parse_dt(review.get("submitted_at"))
+                if submitted and submitted <= now:
+                    valid.append(submitted)
+                    if submitted > window_start:
+                        reviews_14d += 1
+            if created and valid:
+                first = min(valid)
+                if first >= created:
+                    review_latencies.append((first - created).total_seconds() / 3600.0)
+
+    commits = client.list_commits(
+        repo,
+        since=window_start.isoformat(),
+        until=now.isoformat(),
+    )
     contributors = set()
     commit_count = 0
     for commit in commits:
@@ -159,4 +189,12 @@ def current_milestone_features(repo: str, milestone_number: int, client: GitHubC
         "evidence": evidence_from_milestone_items(repo, items),
         "snapshot_at": now.isoformat(),
         "due_on": milestone.get("due_on"),
+        "feature_mode": "enriched" if enriched else "low_api",
+        "feature_note": (
+            "Low-API mode avoids per-issue/per-PR requests. Review latency and removed-scope "
+            "signals are left missing for model imputation; recent scope additions use current "
+            "milestone items created in the last 14 days."
+            if not enriched
+            else "Enriched mode uses issue-event and PR-review endpoints."
+        ),
     }
