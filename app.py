@@ -565,6 +565,14 @@ def trust_page():
     st.subheader("Predictive model")
     if model["status"] == "not_validated":
         st.warning("No validated production model report is available yet.")
+    status = model.get("deployment_status") or model.get("status") or "unknown"
+    approved = bool(model.get("production_approved"))
+    st.caption(f"Model deployment status: {status} · Production approved: {'Yes' if approved else 'No'}")
+    if model.get("limitations"):
+        with st.expander("Model limitations"):
+            for limitation in model["limitations"]:
+                st.write(f"- {limitation}")
+
     c1, c2, c3 = st.columns(3)
     c1.metric("Macro F1", "Not measured" if model["macro_f1"] is None else f"{model['macro_f1']:.3f}")
     c2.metric("Mean Brier", "Not measured" if model["mean_brier"] is None else f"{model['mean_brier']:.3f}")
