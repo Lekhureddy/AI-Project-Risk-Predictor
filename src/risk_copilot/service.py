@@ -14,6 +14,10 @@ from .demo import demo_assessments, demo_drivers, demo_evidence, demo_timeline
 from .evidence_graph import build_evidence_graph, graph_payload
 from .interventions import create_intervention
 from .modeling import FEATURE_COLUMNS, risk_score_from_probabilities
+from .explanations import explain_prediction
+from .live_repository import current_milestone_features
+from .metric_evidence import metric_evidence_from_features
+from .narrative_service import generate_narrative
 from .portfolio import build_portfolio_summary
 from .security import run_security_self_checks, sanitize_evidence
 from .storage import SQLiteStore
@@ -86,6 +90,51 @@ class RiskCopilotService:
         }
         self.store.save_assessment(assessment)
         return assessment
+
+
+    def assess_github_milestone(self, *, repo: str, milestone_number: int) -> dict:
+        current = current_milestone_features(repo, milestone_number)
+        assessment = self.assess_features(
+            project_id=f"{repo}:{milestone_number}",
+            project_name=current["project_name"],
+            features=current["features"],
+        )
+
+        report = self.model_report()
+        medians = report.get("reference_feature_medians") or {}
+        reference = pd.DataFrame([{feature: medians.get(feature) for feature in FEATURE_COLUMNS}])
+
+        model = self.load_model()
+        model_drivers = explain_prediction(
+            model,
+            current["features"],
+            reference,
+            top_k=5,
+        )
+
+        metric_evidence, evidence_for_feature = metric_evidence_from_features(current["features"])
+        narrative = generate_narrative(
+            model_drivers=model_drivers,
+            evidence=metric_evidence,
+            evidence_for_feature=evidence_for_feature,
+        )
+
+        enriched = dict(assessment)
+        enriched["repository"] = repo
+        enriched["milestone_number"] = milestone_number
+        enriched["snapshot_at"] = current["snapshot_at"]
+        enriched["due_on"] = current["due_on"]
+        enriched["drivers"] = narrative.get("drivers", [])
+        enriched["mitigations"] = narrative.get("mitigations", [])
+        enriched["narrative_confidence"] = narrative.get("confidence")
+        enriched["what_would_change"] = narrative.get("what_would_change")
+        enriched["abstained"] = narrative.get("abstained", False)
+        enriched["narrative_provider"] = narrative.get("provider")
+        enriched["narrative_evaluation"] = narrative.get("evaluation")
+        enriched["evidence"] = metric_evidence + current["evidence"]
+        enriched["source"] = "github_current_state"
+        self.store.save_assessment(enriched)
+        return enriched
 
     def project_detail(self, project_id: str, *, demo: bool = False) -> dict:
         if demo:
