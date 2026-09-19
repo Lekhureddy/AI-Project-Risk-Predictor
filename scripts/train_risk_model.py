@@ -9,6 +9,7 @@ import pandas as pd
 
 from risk_copilot.data_quality import validate_rows
 from risk_copilot.modeling import (
+    FEATURE_COLUMNS,
     calibrate_model,
     evaluate_classifier,
     grouped_split,
@@ -78,7 +79,7 @@ def main() -> int:
         "reference_feature_medians": {
             col: (None if pd.isna(split.train[col].median()) else float(split.train[col].median()))
             for col in split.train.columns
-            if col in __import__("risk_copilot.modeling", fromlist=["FEATURE_COLUMNS"]).FEATURE_COLUMNS
+            if col in FEATURE_COLUMNS
         },
     }
     (out / "model_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
