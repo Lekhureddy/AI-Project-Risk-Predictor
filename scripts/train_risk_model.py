@@ -23,10 +23,18 @@ def main() -> int:
     parser.add_argument("--out", default="artifacts/model")
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument("--min-rows", type=int, default=100)
+    parser.add_argument("--min-repositories", type=int, default=5)
+    parser.add_argument("--min-eligible-fraction", type=float, default=0.70)
     args = parser.parse_args()
 
     raw = pd.read_csv(args.csv_path)
-    quality = validate_rows(raw.to_dict(orient="records"))
+    quality = validate_rows(
+        raw.to_dict(orient="records"),
+        min_rows=args.min_rows,
+        min_repositories=args.min_repositories,
+        min_eligible_fraction=args.min_eligible_fraction,
+    )
     if quality.blockers:
         print(json.dumps({"status": "blocked", "quality": quality.to_dict()}, indent=2))
         return 2
@@ -51,6 +59,12 @@ def main() -> int:
 
     report = {
         "status": "trained",
+        "validation_profile": {
+            "min_rows": args.min_rows,
+            "min_repositories": args.min_repositories,
+            "min_eligible_fraction": args.min_eligible_fraction,
+        },
+        "data_quality": quality.to_dict(),
         "selected_model": selected_name,
         "baseline_macro_f1": baseline_f1,
         "selected_macro_f1": selected_f1,
