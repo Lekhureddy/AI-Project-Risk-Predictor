@@ -1,27 +1,15 @@
-# Python cache
 __pycache__/
-*.pyc
-
-# Virtual environments
-venv/
+*.py[cod]
+.pytest_cache/
 .venv/
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# OS files
-.DS_Store
-
-# Git metadata
+venv/
 .git/
 .github/
-
-# Large/unnecessary folders
+.DS_Store
+.ipynb_checkpoints/
+data/raw/
+data/processed/
+data/smoke/
+data/*.db
+artifacts/
 powerbi/
-docs/
-data/
-*.csv
-
-# IMPORTANT:
-# Do NOT ignore model.pkl or feature_columns.pkl
