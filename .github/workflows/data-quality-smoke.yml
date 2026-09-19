@@ -1,0 +1,43 @@
+name: Risk Copilot data-quality smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/risk_copilot/**"
+      - "scripts/build_v2_dataset.py"
+      - "scripts/validate_v2_dataset.py"
+      - ".github/workflows/data-quality-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-data-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Collect a small public-data sample
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONPATH: src
+        run: |
+          python scripts/build_v2_dataset.py             --repo pytorch/pytorch             --max-milestones 2             --skip-reviews             --allow-due-date-proxy             --out data/smoke
+      - name: Inspect sample without pretending it is train-ready
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/validate_v2_dataset.py             data/smoke/milestone_features.csv             --report data/smoke/data_quality_report.json             --min-rows 1             --min-repositories 1             --min-eligible-fraction 0.0 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-data-smoke-report
+          path: |
+            data/smoke/milestone_features.csv
+            data/smoke/milestone_labels.csv
+            data/smoke/collection_warnings.json
+            data/smoke/data_quality_report.json
