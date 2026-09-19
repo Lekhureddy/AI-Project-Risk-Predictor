@@ -48,6 +48,7 @@ def main() -> int:
                 max_milestones=args.max_milestones,
                 collect_reviews=False,
                 allow_due_date_proxy=True,
+                allow_membership_proxy=True,
             )
             features.extend(result.features)
             labels.extend(result.labels)
