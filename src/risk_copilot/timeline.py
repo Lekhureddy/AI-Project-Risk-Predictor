@@ -23,12 +23,29 @@ def risk_band(score: float) -> str:
     return "Low"
 
 
+def _timestamp_for(item: dict) -> str:
+    """
+    Accept all timestamp fields produced by Risk Copilot.
+
+    Saved assessments use created_at; historical research rows may use
+    snapshot_date; timeline-only demo records may use timestamp.
+    """
+    return str(
+        item.get("timestamp")
+        or item.get("snapshot_date")
+        or item.get("created_at")
+        or ""
+    )
+
+
 def build_risk_timeline(assessments: Iterable[dict]) -> list[dict]:
     rows = []
     for item in assessments:
-        timestamp = str(item.get("timestamp") or item.get("snapshot_date") or "")
+        timestamp = _timestamp_for(item)
         if not timestamp:
-            raise ValueError("timeline assessment is missing timestamp")
+            # Skip malformed legacy records instead of crashing the entire
+            # Project Intelligence page.
+            continue
         score = float(item["risk_score"])
         rows.append((datetime.fromisoformat(timestamp.replace("Z", "+00:00")), timestamp, score))
 
