@@ -1,397 +1,474 @@
-import streamlit as st
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import networkx as nx
 import pandas as pd
-import pickle
+import plotly.graph_objects as go
+import streamlit as st
 
-# ------------------------------------------------------------
-# Helper functions
-# ------------------------------------------------------------
-def risk_band(score: float) -> str:
-    """Convert numeric risk score into a simple risk band."""
-    if pd.isna(score):
-        return "N/A"
-    if score >= 80:
-        return "High"
-    if score >= 60:
-        return "Medium"
-    return "Low"
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from risk_copilot.demo import demo_assessments
+from risk_copilot.evidence_graph import build_evidence_graph
+from risk_copilot.modeling import FEATURE_COLUMNS
+from risk_copilot.portfolio import build_portfolio_summary
+from risk_copilot.service import RiskCopilotService
+from risk_copilot.simulation import simulate_scenario
 
 
-def recommend_action(score: float) -> str:
-    """Return a short, practical recommendation based on the risk score."""
-    if pd.isna(score):
-        return "Risk score not available"
-    if score >= 80:
-        return "Escalate: add buffer, reduce scope, and assign senior support"
-    if score >= 60:
-        return "Hold: monitor closely and revisit plan assumptions"
-    return "Go: no immediate action required"
+st.set_page_config(
+    page_title="Risk Copilot",
+    page_icon="◈",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+service = RiskCopilotService(db_path=os.getenv("RISK_COPILOT_DB", "data/risk_copilot.db"))
 
 
-def safe_mean(series: pd.Series):
-    val = pd.to_numeric(series, errors="coerce").mean()
-    return None if pd.isna(val) else round(float(val), 2)
+FEATURE_LABELS = {
+    "open_issue_count": "Open issues",
+    "closed_issue_count": "Closed issues",
+    "open_pr_count": "Open pull requests",
+    "closed_pr_count": "Closed pull requests",
+    "median_open_issue_age_days": "Median open issue age (days)",
+    "scope_added_14d": "Scope added in last 14 days",
+    "scope_removed_14d": "Scope removed in last 14 days",
+    "reviews_14d": "Reviews in last 14 days",
+    "median_first_review_latency_hours": "Median first-review latency (hours)",
+    "commit_count_14d": "Commits in last 14 days",
+    "active_contributors_14d": "Active contributors in last 14 days",
+    "horizon_days": "Days before due date",
+}
 
 
-# ------------------------------------------------------------
-# Page setup
-# ------------------------------------------------------------
-st.set_page_config(page_title="AI Project Risk Predictor", layout="wide")
+def badge(value: str) -> str:
+    icons = {
+        "Critical": "🔴",
+        "High": "🟠",
+        "Medium": "🟡",
+        "Low": "🟢",
+    }
+    return f"{icons.get(value, '⚪')} {value}"
 
-# ------------------------------------------------------------
-# Sidebar: Navigation + Links
-# ------------------------------------------------------------
-st.sidebar.title("Navigation")
+
+def timeline_chart(points: list[dict]) -> go.Figure:
+    frame = pd.DataFrame(points)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"])
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=frame["timestamp"],
+            y=frame["risk_score"],
+            mode="lines+markers",
+            name="Risk score",
+        )
+    )
+    fig.update_layout(
+        yaxis_title="Risk score",
+        xaxis_title="",
+        yaxis_range=[0, 100],
+        height=330,
+        margin=dict(l=10, r=10, t=20, b=10),
+    )
+    return fig
+
+
+def evidence_graph_chart(project_id: str, project_name: str, evidence: list[dict]) -> go.Figure:
+    graph = build_evidence_graph(
+        project_id=project_id,
+        project_label=project_name,
+        evidence_items=evidence,
+    )
+    pos = nx.spring_layout(graph, seed=42)
+
+    edge_x = []
+    edge_y = []
+    for source, target in graph.edges():
+        x0, y0 = pos[source]
+        x1, y1 = pos[target]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+
+    nodes = list(graph.nodes())
+    node_x = [pos[n][0] for n in nodes]
+    node_y = [pos[n][1] for n in nodes]
+    labels = [graph.nodes[n].get("label", n) for n in nodes]
+    types = [graph.nodes[n].get("node_type", "unknown") for n in nodes]
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            mode="lines",
+            hoverinfo="none",
+            line=dict(width=1),
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers+text",
+            text=labels,
+            textposition="top center",
+            customdata=types,
+            hovertemplate="%{text}<br>%{customdata}<extra></extra>",
+            marker=dict(size=18),
+            showlegend=False,
+        )
+    )
+    fig.update_layout(
+        height=420,
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
+
+
+def portfolio_page(demo_mode: bool):
+    st.title("Risk Copilot")
+    st.caption("Evidence-grounded delivery intelligence for engineering teams")
+
+    if demo_mode:
+        st.info(
+            "Demo mode is using clearly labeled illustrative project records. "
+            "No demo metric is presented as measured model performance."
+        )
+
+    summary = service.portfolio(demo=demo_mode)
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Active", summary["active_count"])
+    c2.metric("Critical", summary["band_counts"]["Critical"])
+    c3.metric("High", summary["band_counts"]["High"])
+    c4.metric("Medium", summary["band_counts"]["Medium"])
+    c5.metric("Low", summary["band_counts"]["Low"])
+
+    st.subheader("Needs attention")
+    rows = []
+    for item in summary["needs_attention"]:
+        rows.append(
+            {
+                "Project": item.get("project_name", item.get("project_id")),
+                "Risk": item["risk_score"],
+                "Band": item["risk_band"],
+                "Change": item.get("risk_change", 0),
+            }
+        )
+    if rows:
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    else:
+        st.info("No saved assessments yet.")
+
+    st.subheader("Emerging risks")
+    emerging = summary["emerging_risks"]
+    if emerging:
+        for item in emerging:
+            st.write(
+                f"**{item.get('project_name', item.get('project_id'))}** — "
+                f"{badge(item['risk_band'])} · {item['risk_score']:.0f} · "
+                f"↑ {item.get('risk_change', 0):.0f}"
+            )
+    else:
+        st.caption("No rapidly worsening items are currently available.")
+
+
+def project_page(demo_mode: bool):
+    st.title("Project Intelligence")
+
+    if demo_mode:
+        projects = demo_assessments()
+        options = {p["project_name"]: p["project_id"] for p in projects}
+    else:
+        saved = service.store.list_assessments()
+        latest = {}
+        for item in saved:
+            latest[item["project_id"]] = item
+        options = {
+            item.get("project_name", project_id): project_id
+            for project_id, item in latest.items()
+        }
+
+    if not options:
+        st.info("No project assessments are available yet.")
+        return
+
+    selected_name = st.selectbox("Project", list(options))
+    project_id = options[selected_name]
+
+    detail = service.project_detail(project_id, demo=demo_mode)
+    latest = detail["latest"]
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Risk score", f"{latest['risk_score']:.0f}/100")
+    c2.metric("Risk band", badge(latest["risk_band"]))
+    c3.metric(
+        "Trend",
+        detail["timeline_summary"]["direction"].title(),
+        detail["timeline_summary"]["net_change"],
+    )
+
+    st.subheader("Risk timeline")
+    st.plotly_chart(timeline_chart(detail["timeline"]), use_container_width=True)
+
+    st.subheader("Why Risk Copilot is concerned")
+    if detail["drivers"]:
+        for i, driver in enumerate(detail["drivers"], 1):
+            with st.expander(f"{i}. {driver.get('claim', driver.get('feature', 'Risk driver'))}"):
+                if driver.get("contribution") is not None:
+                    st.metric("Model contribution", f"{driver['contribution']:+.1f} risk points")
+                for citation in driver.get("citations", []):
+                    st.code(
+                        f"{citation.get('evidence_id')}: {citation.get('quote')}",
+                        language=None,
+                    )
+    else:
+        st.caption("No verified explanatory drivers are available.")
+
+    st.subheader("Evidence")
+    if detail["evidence"]:
+        st.plotly_chart(
+            evidence_graph_chart(
+                project_id,
+                latest.get("project_name", project_id),
+                detail["evidence"],
+            ),
+            use_container_width=True,
+        )
+        for item in detail["evidence"]:
+            st.markdown(f"**{item['evidence_id']} — {item['title']}**")
+            st.caption(item["text"])
+    else:
+        st.caption("No evidence records are available.")
+
+    st.subheader("Challenge this assessment")
+    evidence_ids = [x["evidence_id"] for x in detail["evidence"]]
+    challenged = st.multiselect(
+        "Evidence you believe is stale, irrelevant, or incorrect",
+        evidence_ids,
+    )
+    if st.button("Challenge evidence", disabled=not challenged):
+        result = service.challenge(
+            drivers=detail["drivers"],
+            evidence_ids=challenged,
+        )
+        st.success(
+            f"Removed {result['challenge']['removed_driver_count']} evidence-backed driver(s) "
+            "from the narrative review."
+        )
+        st.caption(result["challenge"]["note"])
+
+
+def assessment_page():
+    st.title("New Assessment")
+
+    if not service.model_available:
+        st.warning(
+            "The validated V2 model artifact is not available yet. "
+            "Assessment is intentionally disabled instead of falling back to the legacy synthetic model."
+        )
+        st.caption(
+            "The data pipeline and model-training system are implemented; a production assessment "
+            "will be enabled only after real-data validation passes."
+        )
+        return
+
+    project_id = st.text_input("Project ID", "my-project")
+    project_name = st.text_input("Project name", "My Project")
+
+    features = {}
+    cols = st.columns(2)
+    for idx, feature in enumerate(FEATURE_COLUMNS):
+        default = 14.0 if feature == "horizon_days" else 0.0
+        with cols[idx % 2]:
+            features[feature] = st.number_input(
+                FEATURE_LABELS.get(feature, feature),
+                min_value=0.0,
+                value=default,
+                step=1.0,
+                key=f"assess_{feature}",
+            )
+
+    if st.button("Run assessment", type="primary"):
+        result = service.assess_features(
+            project_id=project_id,
+            project_name=project_name,
+            features=features,
+        )
+        st.success("Assessment saved.")
+        c1, c2 = st.columns(2)
+        c1.metric("Risk score", result["risk_score"])
+        c2.metric("Risk band", badge(result["risk_band"]))
+        st.json(result["probabilities"])
+
+
+def decision_lab_page():
+    st.title("Decision Lab")
+    st.write(
+        "Explore how the predictive model responds to explicit feature scenarios. "
+        "Results are model-based scenario estimates, not causal forecasts."
+    )
+
+    if not service.model_available:
+        st.warning(
+            "Decision Lab requires the validated V2 model artifact. "
+            "It remains disabled rather than generating illustrative numbers that could be mistaken for model output."
+        )
+        return
+
+    model = service.load_model()
+    current = {}
+    changes = {}
+
+    st.subheader("Current state")
+    cols = st.columns(2)
+    for idx, feature in enumerate(FEATURE_COLUMNS):
+        default = 14.0 if feature == "horizon_days" else 0.0
+        with cols[idx % 2]:
+            current[feature] = st.number_input(
+                FEATURE_LABELS.get(feature, feature),
+                min_value=0.0,
+                value=default,
+                step=1.0,
+                key=f"current_{feature}",
+            )
+
+    st.subheader("Scenario changes")
+    candidates = st.multiselect(
+        "Choose features to change",
+        FEATURE_COLUMNS,
+        format_func=lambda x: FEATURE_LABELS.get(x, x),
+    )
+    for feature in candidates:
+        changes[feature] = st.number_input(
+            f"Scenario: {FEATURE_LABELS.get(feature, feature)}",
+            min_value=0.0,
+            value=float(current[feature]),
+            step=1.0,
+            key=f"scenario_{feature}",
+        )
+
+    if st.button("Run scenario", disabled=not changes, type="primary"):
+        result = simulate_scenario(model, current, changes)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Current risk", result["current_risk_score"])
+        c2.metric("Scenario risk", result["scenario_risk_score"])
+        c3.metric("Change", result["delta"])
+        st.info(result["disclaimer"])
+
+
+def interventions_page(demo_mode: bool):
+    st.title("Intervention Memory")
+    st.write(
+        "Record human decisions about recommended interventions and later compare them with observed outcomes."
+    )
+
+    assessments = demo_assessments() if demo_mode else service.store.list_assessments()
+    if not assessments:
+        st.info("No assessments are available.")
+        return
+
+    names = {
+        f"{a.get('project_name', a['project_id'])} · {a['assessment_id']}": a
+        for a in assessments
+    }
+    selected = st.selectbox("Assessment", list(names))
+    assessment = names[selected]
+
+    recommendation = st.text_input(
+        "Recommendation",
+        "Review the highest-impact delivery bottleneck with the project owner.",
+    )
+    decision = st.selectbox("Manager decision", ["accepted", "modified", "rejected"])
+    reason = st.text_area("Decision note", "")
+
+    if st.button("Save intervention"):
+        record = service.record_intervention(
+            assessment_id=assessment["assessment_id"],
+            recommendation=recommendation,
+            decision=decision,
+            risk_before=assessment["risk_score"],
+            decision_reason=reason or None,
+        )
+        st.success(f"Intervention recorded: {record['intervention_id']}")
+
+    history = service.store.list_interventions()
+    if history:
+        st.subheader("Recorded interventions")
+        st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
+
+
+def trust_page():
+    st.title("AI Trust Center")
+    trust = service.trust_center()
+
+    model = trust["predictive_model"]
+    st.subheader("Predictive model")
+    if model["status"] == "not_validated":
+        st.warning("No validated production model report is available yet.")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Macro F1", "Not measured" if model["macro_f1"] is None else f"{model['macro_f1']:.3f}")
+    c2.metric("Mean Brier", "Not measured" if model["mean_brier"] is None else f"{model['mean_brier']:.3f}")
+    c3.metric(
+        "Lift vs baseline",
+        "Not measured" if model["lift_vs_baseline"] is None else f"{model['lift_vs_baseline']:+.3f}",
+    )
+
+    st.subheader("Security checks")
+    security = trust["security"]
+    c1, c2 = st.columns(2)
+    c1.metric("Checks passed", f"{security['checks_passed']}/{security['checks_total']}")
+    c2.metric("All passed", "Yes" if security["all_passed"] else "No")
+
+    st.subheader("Human feedback")
+    feedback = trust["human_feedback"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Agree", feedback["agree"])
+    c2.metric("Disagree", feedback["disagree"])
+    c3.metric("Total", feedback["total"])
+
+    st.caption(
+        "Risk Copilot does not display target thresholds as achieved results. "
+        "Metrics appear here only after the corresponding evaluation has actually run."
+    )
+
+
+st.sidebar.title("Risk Copilot")
+demo_mode = st.sidebar.toggle("Demo mode", value=not service.model_available)
+if not service.model_available:
+    st.sidebar.caption("Validated model unavailable — demo mode is recommended.")
+
 page = st.sidebar.radio(
-    "Go to",
-    ["Risk Predictor", "Power BI", "Architecture", "DevOps", "Java Decision Layer", "Jira and Workflow"],
+    "Workspace",
+    [
+        "Portfolio",
+        "Project Intelligence",
+        "New Assessment",
+        "Decision Lab",
+        "Intervention Memory",
+        "AI Trust Center",
+    ],
 )
 
 st.sidebar.divider()
-st.sidebar.subheader("Project Links")
-st.sidebar.write("Jira board (private):")
-st.sidebar.write("https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1")
-st.sidebar.caption(
-    "If you are viewing this from the public app, the repository folders mentioned below (powerbi/, "
-    "java-risk-service/, docs/) are available in the project GitHub repo."
-)
+st.sidebar.caption("Read-only AI decision support. Human approval remains required.")
 
-# ------------------------------------------------------------
-# PAGE 1: Risk Predictor (Main App)
-# ------------------------------------------------------------
-if page == "Risk Predictor":
-    st.title("AI Project Risk Predictor")
-    st.write(
-        "Upload a CSV file to generate a predicted outcome, risk score, and recommended action. "
-        "This is the main prediction workflow used in the project."
-    )
-
-    with st.expander("How to use"):
-        st.markdown(
-            """
-            1. Upload a CSV file (the same format used during training).
-            2. The app will generate Predicted Outcome, Risk Score, Risk Band, and a Recommended Action.
-            3. Use the filters on the left to narrow the results.
-            4. Download either the filtered results or the full output as a CSV.
-            """
-        )
-
-    uploaded_file = st.file_uploader("Upload project dataset (CSV)", type=["csv"])
-    if uploaded_file is None:
-        st.info("Upload a CSV file to continue.")
-        st.stop()
-
-    # -----------------------------
-    # Read data
-    # -----------------------------
-    df = pd.read_csv(uploaded_file)
-
-    # If user uploads a dataset that already includes the target column, drop it
-    if "Outcome" in df.columns:
-        df = df.drop(columns=["Outcome"])
-
-    # -----------------------------
-    # Load model + feature columns
-    # -----------------------------
-    with open("model.pkl", "rb") as f:
-        model = pickle.load(f)
-
-    with open("feature_columns.pkl", "rb") as f:
-        required_features = pickle.load(f)
-
-    # -----------------------------
-    # Encode uploaded data to match training
-    # Training used: pd.get_dummies(..., drop_first=True) + fillna
-    # -----------------------------
-    df_encoded = pd.get_dummies(df, drop_first=True)
-
-    # Fill missing numeric values (median), then fill any remaining missing values with 0
-    num_cols = df_encoded.select_dtypes(include="number").columns
-    if len(num_cols) > 0:
-        df_encoded[num_cols] = df_encoded[num_cols].fillna(df_encoded[num_cols].median())
-    df_encoded = df_encoded.fillna(0)
-
-    # Add missing columns that training had
-    for col in required_features:
-        if col not in df_encoded.columns:
-            df_encoded[col] = 0
-
-    # Keep ONLY training columns in the same order
-    X = df_encoded[required_features]
-
-    # -----------------------------
-    # Predict
-    # -----------------------------
-    preds = model.predict(X)
-
-    # Risk score from probabilities (if available)
-    if hasattr(model, "predict_proba"):
-        proba = model.predict_proba(X)
-        risk_scores = (proba.max(axis=1) * 100).round(2)
-    else:
-        risk_scores = pd.Series([pd.NA] * len(df))
-
-    # -----------------------------
-    # Output table
-    # -----------------------------
-    output = df.copy()
-    output["Predicted Outcome"] = preds
-    output["Risk Score"] = risk_scores
-    output["Risk Band"] = output["Risk Score"].apply(risk_band)
-    output["Recommended Action"] = output["Risk Score"].apply(recommend_action)
-
-    # -----------------------------
-    # Sidebar filters (only on main page)
-    # -----------------------------
-    st.sidebar.divider()
-    st.sidebar.subheader("Filters (Risk Predictor)")
-
-    all_outcomes = sorted(output["Predicted Outcome"].astype(str).unique().tolist())
-    selected_outcomes = st.sidebar.multiselect(
-        "Predicted Outcome",
-        options=all_outcomes,
-        default=all_outcomes,
-    )
-
-    all_bands = ["Low", "Medium", "High"]
-    selected_bands = st.sidebar.multiselect(
-        "Risk Band",
-        options=all_bands,
-        default=all_bands,
-    )
-
-    filtered = output[
-        (output["Predicted Outcome"].astype(str).isin(selected_outcomes))
-        & (output["Risk Band"].isin(selected_bands))
-    ].copy()
-
-    # -----------------------------
-    # Summary
-    # -----------------------------
-    st.subheader("Summary")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Records", len(output))
-    c2.metric("Shown After Filters", len(filtered))
-    c3.metric("Critical Count", int((filtered["Predicted Outcome"].astype(str) == "Critical").sum()))
-    avg_risk = safe_mean(filtered["Risk Score"])
-    c4.metric("Average Risk Score", avg_risk if avg_risk is not None else "N/A")
-
-    # -----------------------------
-    # Results
-    # -----------------------------
-    st.subheader("Prediction Results")
-    st.dataframe(
-        filtered[["Predicted Outcome", "Risk Score", "Risk Band", "Recommended Action"]],
-        use_container_width=True,
-    )
-
-    # -----------------------------
-    # Downloads
-    # -----------------------------
-    st.subheader("Download Results")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        csv_filtered = filtered.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="Download filtered CSV",
-            data=csv_filtered,
-            file_name="project_risk_predictions_filtered.csv",
-            mime="text/csv",
-        )
-
-    with col2:
-        csv_full = output.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="Download full CSV",
-            data=csv_full,
-            file_name="project_risk_predictions_full.csv",
-            mime="text/csv",
-        )
-
-    with st.expander("View full output table"):
-        st.dataframe(output, use_container_width=True)
-
-    with st.expander("Notes about the output"):
-        st.markdown(
-            """
-            - Predicted Outcome is the model output (classification).
-            - Risk Score is derived from prediction confidence (when `predict_proba` is available).
-            - Recommended Action is a simple, readable suggestion based on the risk score.
-            """
-        )
-
-# ------------------------------------------------------------
-# PAGE 2: Power BI
-# ------------------------------------------------------------
-elif page == "Power BI":
-    st.title("Power BI Dashboard")
-    st.write(
-        "This project includes a Power BI dashboard created from the prediction output. "
-        "The goal is to make results easy to review for non-technical stakeholders."
-    )
-
-    st.subheader("What the dashboard shows")
-    st.markdown(
-        """
-        - Overall risk distribution and predicted outcome summary
-        - Decision breakdown (GO / HOLD / ESCALATE)
-        - Risk score comparisons
-        - Detailed table view for drill-down and review
-        """
-    )
-
-    st.subheader("Where to find it in the repository")
-    st.markdown(
-        """
-        - Folder: `powerbi/`
-        - Screenshots: `powerbi/dashboard_screenshots/`
-        - Dashboard file: `.pbix` (if included in the repo)
-        """
-    )
-
-    st.subheader("How to use with this app")
-    st.markdown(
-        """
-        - Use the Risk Predictor page to download output CSV files.
-        - Load the output file into Power BI to refresh visuals.
-        - Use the Overview page for quick monitoring and the Details page for drill-down.
-        """
-    )
-
-# ------------------------------------------------------------
-# PAGE 3: Architecture
-# ------------------------------------------------------------
-elif page == "Architecture":
-    st.title("System Architecture and Networking")
-    st.write(
-        "The current implementation is intentionally simple and practical. "
-        "It runs as a single Streamlit application where preprocessing and inference happen on the server."
-    )
-
-    st.subheader("High-level components")
-    st.markdown(
-        """
-        - Client: web browser
-        - Server: Streamlit app (Python)
-        - Model artifacts: `model.pkl` and `feature_columns.pkl` loaded locally at runtime
-        - Output: CSV results for reporting (Power BI)
-        """
-    )
-
-    st.subheader("Communication flow (current setup)")
-    st.markdown(
-        """
-        - The browser connects to the app over HTTPS when deployed.
-        - The app processes the uploaded CSV inside the same runtime environment.
-        - No external API calls are required for inference in the current prototype.
-        """
-    )
-
-    st.subheader("Repository documentation")
-    st.markdown(
-        """
-        If you included an architecture document or diagram in the repo, reference it here:
-        - Example: `docs/architecture/architecture_diagram.png`
-        - Example: `NETWORKING_SYSTEM_ARCHITECTURE.md`
-        """
-    )
-
-# ------------------------------------------------------------
-# PAGE 4: DevOps
-# ------------------------------------------------------------
-elif page == "DevOps":
-    st.title("DevOps and Deployment")
-    st.write(
-        "This project includes basic DevOps practices to keep the application reproducible and easy to deploy."
-    )
-
-    st.subheader("What is included")
-    st.markdown(
-        """
-        - Docker setup for consistent local runs
-        - GitHub Actions workflow for basic CI checks
-        - Streamlit Cloud deployment for the live application
-        """
-    )
-
-    st.subheader("Why this matters")
-    st.markdown(
-        """
-        - Docker helps avoid “works on my machine” issues.
-        - CI checks help catch missing dependencies or broken builds early.
-        - Streamlit Cloud allows quick sharing and testing without manual deployment steps.
-        """
-    )
-
-    st.subheader("Repository locations")
-    st.markdown(
-        """
-        - `Dockerfile` (if included)
-        - `.github/workflows/` for GitHub Actions
-        """
-    )
-
-# ------------------------------------------------------------
-# PAGE 5: Java Decision Layer
-# ------------------------------------------------------------
-elif page == "Java Decision Layer":
-    st.title("Java Decision Layer")
-    st.write(
-        "The Java module is a small post-processing step that converts model outputs into clear actions. "
-        "This reflects how many teams apply business rules after predictions."
-    )
-
-    st.subheader("What it does")
-    st.markdown(
-        """
-        - Reads a CSV that contains at least Predicted Outcome and Risk Score
-        - Assigns a decision (GO / HOLD / ESCALATE)
-        - Adds a short reason for the decision
-        - Writes a clean output CSV for reporting and dashboards
-        """
-    )
-
-    st.subheader("Where to find it in the repository")
-    st.markdown(
-        """
-        - Folder: `java-risk-service/`
-        - README: `java-risk-service/README.md`
-        - Example files:
-          - `sample_input_predictions.csv`
-          - `sample_output_decisions.csv`
-        """
-    )
-
-# ------------------------------------------------------------
-# PAGE 6: Jira and Workflow
-# ------------------------------------------------------------
-elif page == "Jira and Workflow":
-    st.title("Jira and Project Workflow")
-    st.write(
-        "This project was planned and tracked using Jira to keep work structured and realistic. "
-        "The goal was to manage tasks, progress, and risks the way a project team would."
-    )
-
-    st.subheader("Jira board")
-    st.write("https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1")
-    st.caption(
-        "The board is private. This is normal for real project work. If needed, screenshots or a walkthrough can be shared."
-    )
-
-    st.subheader("How Jira was used")
-    st.markdown(
-        """
-        - Epics and user stories to organize work
-        - Tasks for implementation steps (modeling, app, dashboard, documentation)
-        - Status tracking to monitor progress
-        - Risk-related tasks to reflect project health and mitigation steps
-        """
-    )
-
-    st.subheader("Product documentation")
-    st.markdown(
-        """
-        Product-level notes are documented in the repository:
-        - `PRODUCT_MANAGEMENT.md`
-        """
-    )
+if page == "Portfolio":
+    portfolio_page(demo_mode)
+elif page == "Project Intelligence":
+    project_page(demo_mode)
+elif page == "New Assessment":
+    assessment_page()
+elif page == "Decision Lab":
+    decision_lab_page()
+elif page == "Intervention Memory":
+    interventions_page(demo_mode)
+elif page == "AI Trust Center":
+    trust_page()
