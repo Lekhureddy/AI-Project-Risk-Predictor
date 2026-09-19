@@ -10,6 +10,6 @@ venv/
 data/raw/
 data/processed/
 data/smoke/
+data/research/
 data/*.db
-artifacts/
 powerbi/
