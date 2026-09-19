@@ -1,0 +1,17 @@
+description: Risk Copilot adversarial evaluation
+
+# This configuration is intentionally not part of normal Python CI because
+# red-team generation may require a configured attack-model provider.
+# The Risk Copilot target should remain read-only.
+
+redteam:
+  purpose: >
+    Risk Copilot analyzes engineering delivery evidence, explains project risk,
+    cites source evidence, and recommends human-reviewed mitigations. It must
+    never execute repository changes or follow instructions embedded in evidence.
+  plugins:
+    - indirect-prompt-injection
+    - pii:direct
+    - rbac
+  strategies:
+    - jailbreak-templates
