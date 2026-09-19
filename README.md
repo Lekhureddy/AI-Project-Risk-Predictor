@@ -1,193 +1,127 @@
-# AI Project Risk Predictor
+# Risk Copilot — AI Project Risk Predictor
 
-This repository contains an end-to-end project that predicts project risk from historical data and presents the results in a form that is easy to understand and act on.  
-The project is designed as a practical decision-support tool rather than a research-focused model.
+Risk Copilot is an evidence-oriented delivery intelligence project for identifying project risk early, explaining the signals behind that risk, and supporting human decision-making.
 
-A simple web interface allows users to upload project data and receive a predicted outcome, a risk score, and a clear recommended action.
+The repository is evolving from an earlier CSV-based prediction proof of concept into a system built around real engineering-delivery data, temporal features, measurable model quality, and later evidence-grounded AI explanations.
 
----
+## Current status
 
-## Live Application
+The original Streamlit application remains available as a working proof of concept:
 
-Streamlit App:  
 https://ai-project-risk-predictor-jhb6k9onjkannf7g5ugpqj.streamlit.app/
 
----
+The new Risk Copilot pipeline is being built in parallel. It currently includes:
 
-## Problem Context
+- GitHub REST data ingestion
+- historical point-in-time snapshots
+- deterministic project-outcome labels
+- temporal engineering-delivery features
+- data-quality gates
+- automated functional tests and CI
+- public-data smoke testing
 
-Project risks are often identified late, after delays or failures have already occurred.  
-Status updates are usually spread across spreadsheets, tools, and meetings, making early risk detection difficult and inconsistent.
+The legacy synthetic dataset and human-authored risk field are not treated as training truth for the new model.
 
-This project was built to answer one key question:
+## Product direction
 
-Which projects need attention right now, and why?
+Risk Copilot is designed to answer four practical questions:
 
----
+1. Which delivery targets need attention?
+2. What signals are driving the risk?
+3. What project evidence supports the assessment?
+4. What actions could a manager evaluate before deciding?
 
-## What the Application Does
+The final application will combine predictive risk intelligence, risk trends, evidence-backed explanations, decision support, human feedback, and AI quality monitoring.
 
-1. Users upload a CSV file containing project metrics.
-2. The data is preprocessed to match the training feature schema.
-3. A machine learning model predicts the project outcome.
-4. A risk score (0–100) is calculated from prediction confidence.
-5. Each record is assigned a risk band and a recommended action.
-6. Results can be filtered and downloaded as CSV files.
+## Architecture
 
----
-
-## Outputs
-
-- Predicted Outcome (On Track / Delayed / Critical)
-- Risk Score (0–100)
-- Risk Band (Low / Medium / High)
-- Recommended Action (plain-language guidance)
-
----
-
-## Project Structure
-
-- `app.py`  
-  Streamlit application for file upload, preprocessing, prediction, filtering, and downloads.
-
-- `model.pkl`  
-  Trained machine learning model used for inference.
-
-- `feature_columns.pkl`  
-  Feature list used during training to align uploaded data before prediction.
-
-- `AI_BASED_PREDICATION.ipynb`  
-  Notebook used during model development and experimentation.
-
-- `updated_report1.csv`  
-  Sample dataset used for testing and demonstration.
-
-- `java-risk-service/`  
-  Java-based post-processing step that converts model predictions into decision labels (GO / HOLD / ESCALATE).  
-  Includes sample input/output CSV files and a folder-level README.
-
-- `powerbi/`  
-  Power BI dashboards and screenshots built using the prediction output.
-
-- `NETWORKING_ARCHITECTURE.md`  
-  Documentation explaining system architecture and data flow.
-
-- `Dockerfile`, `.dockerignore`  
-  Docker configuration for consistent local and containerized runs.
-
-- `.github/workflows/`  
-  GitHub Actions workflow used for basic CI checks.
-
-- `PRODUCT_MANAGEMENT.md`  
-  Product management documentation covering users, decisions, metrics, and roadmap.
-
----
-
-## Running the Application Locally
-
-Install dependencies:
-## Running the Application Locally
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
+```text
+GitHub engineering data
+        |
+        v
+Temporal data pipeline
+        |
+        v
+Quality and leakage checks
+        |
+        v
+Calibrated risk model
+        |
+        v
+Evidence-grounded AI layer
+        |
+        v
+Risk Copilot web application
 ```
 
-## DevOps and CI
+The V2 implementation lives primarily under:
 
-This project uses a simple DevOps setup that fits a small, working prototype.
+```text
+src/risk_copilot/
+scripts/
+tests/
+docs/v2/
+.github/workflows/
+```
 
-- Docker is used to ensure the application runs the same way locally and in deployment.
-- GitHub Actions are configured for basic checks such as dependency installation.
-- The live application is deployed using Streamlit Cloud.
+## Data integrity
 
-This setup keeps things easy to maintain while still following good engineering practices.
+Risk Copilot does not silently treat unavailable historical values as facts. Data provenance and training eligibility are recorded explicitly, and the predictive model is trained only after the dataset passes the quality gate.
 
----
+See:
 
-## Networking and Architecture
+- `docs/v2/ARCHITECTURE.md`
+- `docs/v2/DATA_CONTRACT.md`
+- `docs/v2/DATA_QUALITY_GATE.md`
+- `docs/v2/TEST_PLAN.md`
+- `docs/v2/DATA_AND_LABEL_DECISION.md`
 
-The system currently runs as a single-container application.
+## Running tests
 
-Flow overview:
-- Users access the app through a web browser.
-- The Streamlit application handles data preprocessing and model inference.
-- Trained model files (model.pkl and feature_columns.pkl) are loaded locally at runtime.
-- No external APIs are required during prediction.
+```bash
+python -m pip install -r requirements-dev.txt
+PYTHONPATH=src python -m pytest -q
+```
 
-More details are documented in:
-- NETWORKING_ARCHITECTURE.md
+## Building a public-data sample
 
----
+Set an optional GitHub token for a higher API rate limit:
 
-## Java Decision Layer
+```bash
+export GITHUB_TOKEN=your_token
+```
 
-The machine learning model provides:
-- Predicted project outcome
-- Risk score
+Then run the dataset builder against a public repository:
 
-In real project environments, predictions are usually followed by simple business rules before taking action.
+```bash
+PYTHONPATH=src python scripts/build_v2_dataset.py \
+  --repo owner/repository \
+  --out data/processed
+```
 
-The Java module:
-- Reads prediction output from a CSV file
-- Applies rule-based logic
-- Generates a decision label (GO / HOLD / ESCALATE)
-- Adds a short explanation for each decision
+Validate the resulting dataset before model training:
 
-This reflects how analytics outputs are commonly used in real project workflows.
+```bash
+PYTHONPATH=src python scripts/validate_v2_dataset.py \
+  data/processed/milestone_features.csv
+```
 
----
+## Legacy proof-of-concept assets
 
-## Power BI Reporting
+The following files belong to the earlier working prototype and are kept for reproducibility while the new application is developed:
 
-Prediction results are visualized using Power BI dashboards to support stakeholder review.
+- `app.py`
+- `model.pkl`
+- `feature_columns.pkl`
+- `AI_BASED_PREDICATION.ipynb`
+- `updated_report1.csv`
+- `java-risk-service/`
+- `powerbi/`
 
-The dashboards include:
-- High-level risk distribution
-- Decision breakdown
-- Risk score comparisons
-- Detailed table views for individual projects
+They should not be interpreted as the final Risk Copilot architecture or model-validation evidence.
 
-Dashboard files and screenshots are available in:
-- powerbi/
+## Technology
 
----
+Python, Streamlit, pandas, scikit-learn, GitHub REST API, Docker, pytest, and GitHub Actions.
 
-## Project Management (Jira)
-
-Project planning and task tracking were done using Jira with a simple Agile workflow.
-
-Jira board (private):
-https://lekhureddy-122.atlassian.net/jira/software/projects/KAN/boards/1
-
-The board is private, which reflects real-world project environments.
-Screenshots or walkthroughs can be shared if needed.
-
----
-
-## Product Perspective
-
-This project was approached as a small product rather than a standalone model.
-
-Key considerations included:
-- Clear problem definition
-- Focus on non-technical users
-- Simple and explainable outputs
-- Separation of prediction, decision logic, and reporting
-- A realistic path for future improvements
-
-Product-related notes are documented in:
-- PRODUCT_MANAGEMENT.md
-
----
-
-## Future Improvements
-
-Possible next steps include:
-- API-based data ingestion instead of manual CSV uploads
-- Storing historical results in a database for trend analysis
-- Separating inference into a dedicated backend service
-- Adding authentication and access control
-- Basic monitoring for performance and model drift
-
+The project prioritizes free and open-source tooling where practical.
