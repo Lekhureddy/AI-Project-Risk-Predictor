@@ -31,11 +31,34 @@ jobs:
           PYTHONPATH: src
         run: python -m pytest -q
 
-      - name: Validate current web-app artifacts
+      - name: API smoke test
+        env:
+          PYTHONPATH: src
         run: |
-          test -f app.py
-          test -f model.pkl
-          test -f feature_columns.pkl
+          uvicorn api.main:app --host 127.0.0.1 --port 8000 > /tmp/risk-api.log 2>&1 &
+          API_PID=$!
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/health
+          kill $API_PID
 
-      - name: Docker build
-        run: docker build -t risk-copilot .
+      - name: Streamlit smoke test
+        env:
+          PYTHONPATH: src
+        run: |
+          streamlit run app.py --server.headless=true --server.port=8501 > /tmp/risk-web.log 2>&1 &
+          WEB_PID=$!
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8501/_stcore/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8501/_stcore/health
+          kill $WEB_PID
+
+      - name: Build web container
+        run: docker build -t risk-copilot-web -f Dockerfile .
+
+      - name: Build API container
+        run: docker build -t risk-copilot-api -f Dockerfile.api .
