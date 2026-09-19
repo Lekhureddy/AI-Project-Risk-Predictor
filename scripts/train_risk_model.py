@@ -75,6 +75,11 @@ def main() -> int:
         "test_rows": len(split.test),
         "train_repositories": sorted(split.train["repo"].unique().tolist()),
         "test_repositories": sorted(split.test["repo"].unique().tolist()),
+        "reference_feature_medians": {
+            col: (None if pd.isna(split.train[col].median()) else float(split.train[col].median()))
+            for col in split.train.columns
+            if col in __import__("risk_copilot.modeling", fromlist=["FEATURE_COLUMNS"]).FEATURE_COLUMNS
+        },
     }
     (out / "model_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
