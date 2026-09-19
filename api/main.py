@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from risk_copilot.modeling import FEATURE_COLUMNS
 from risk_copilot.live_repository import inspect_milestone, list_due_milestones
+from risk_copilot.narrative_service import generate_narrative
 from risk_copilot.service import RiskCopilotService
 from risk_copilot.simulation import simulate_scenario
 
@@ -48,6 +49,12 @@ class InterventionRequest(BaseModel):
     decision: Literal["accepted", "modified", "rejected"]
     risk_before: float = Field(ge=0, le=100)
     decision_reason: str | None = None
+
+
+class NarrativeRequest(BaseModel):
+    model_drivers: list[dict[str, Any]]
+    evidence: list[dict[str, Any]]
+    evidence_for_feature: dict[str, list[dict[str, Any]]]
 
 
 @app.get("/health")
@@ -136,3 +143,15 @@ def github_milestone(repo: str, milestone_number: int):
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.post("/narrative")
+def narrative(request: NarrativeRequest):
+    try:
+        return generate_narrative(
+            model_drivers=request.model_drivers,
+            evidence=request.evidence,
+            evidence_for_feature=request.evidence_for_feature,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
