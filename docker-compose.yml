@@ -1,0 +1,28 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - RISK_COPILOT_DB=/data/risk_copilot.db
+    volumes:
+      - risk-data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - RISK_COPILOT_DB=/data/risk_copilot.db
+    volumes:
+      - risk-data:/data
+
+volumes:
+  risk-data:
