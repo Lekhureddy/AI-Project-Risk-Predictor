@@ -6,9 +6,9 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from src.risk_copilot.modeling import FEATURE_COLUMNS
-from src.risk_copilot.service import RiskCopilotService
-from src.risk_copilot.simulation import simulate_scenario
+from risk_copilot.modeling import FEATURE_COLUMNS
+from risk_copilot.service import RiskCopilotService
+from risk_copilot.simulation import simulate_scenario
 
 
 app = FastAPI(
@@ -51,10 +51,7 @@ class InterventionRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "model_available": service.model_available,
-    }
+    return {"status": "ok", "model_available": service.model_available}
 
 
 @app.get("/portfolio")
