@@ -84,3 +84,37 @@ def test_current_milestone_features_are_derived_from_live_state():
     assert result["features"]["commit_count_14d"] == 1
     assert result["features"]["active_contributors_14d"] == 1
     assert len(result["evidence"]) == 2
+
+
+class CountingClient(FakeClient):
+    def __init__(self):
+        self.event_calls = 0
+        self.review_calls = 0
+        self.commit_calls = 0
+
+    def list_issue_events(self, repo, issue_number):
+        self.event_calls += 1
+        return super().list_issue_events(repo, issue_number)
+
+    def list_pull_reviews(self, repo, pull_number):
+        self.review_calls += 1
+        return super().list_pull_reviews(repo, pull_number)
+
+    def list_commits(self, repo, since, until):
+        self.commit_calls += 1
+        return super().list_commits(repo, since, until)
+
+
+def test_low_api_mode_avoids_n_plus_one_event_and_review_calls():
+    client = CountingClient()
+    result = current_milestone_features(
+        "org/repo",
+        3,
+        client,
+        now=datetime(2026, 9, 19, tzinfo=timezone.utc),
+    )
+    assert result["feature_mode"] == "low_api"
+    assert client.event_calls == 0
+    assert client.review_calls == 0
+    assert client.commit_calls == 1
+    assert result["features"]["reviews_14d"] is None
